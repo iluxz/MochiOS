@@ -58,6 +58,7 @@ jobs:
 
       - name: Build packages
         run: |
+          chown -R mochi:mochi "$PWD"
           chmod +x build.sh
           # Override paths for CI (we're at /__w/mochios/mochios or similar)
           export MOCHIOS_DIR="$PWD"
