@@ -74,7 +74,12 @@ jobs:
 
       - name: Show build log
         if: always()
-        run: cat build.log 2>/dev/null || echo "No build log found"
+        run: |
+          echo "# Build Log" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat build.log 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "No build log found" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat build.log 2>/dev/null || echo "No build log found"
 
       - name: Upload build log (always)
         if: always()
