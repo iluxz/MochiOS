@@ -1,0 +1,17 @@
+# Maintainer: mochios team
+pkgname=mochi
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="MochiOS package manager"
+arch=("x86_64")
+url="https://mochios.dev"
+license=("GPL3")
+depends=("pacman")
+makedepends=("go")
+source=("mochi-$pkgver.tar.gz")
+sha256sums=("SKIP")
+
+package() {
+  cd "$srcdir"
+  install -Dm755 mochi "$pkgdir/usr/bin/mochi"
+}

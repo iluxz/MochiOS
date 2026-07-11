@@ -1,0 +1,15 @@
+# Maintainer: mochios team
+pkgname=sober
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Roblox on Linux - experimental interoperability layer"
+arch=('x86_64')
+url="https://sober.vinegarhq.org"
+license=('custom:proprietary')
+depends=('flatpak')
+source=("sober")
+sha256sums=('SKIP')
+
+package() {
+  install -Dm755 "$srcdir/sober" "$pkgdir/usr/bin/sober"
+}

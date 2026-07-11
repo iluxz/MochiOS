@@ -1,0 +1,7 @@
+[SddmTheme]
+Name=mochios
+Name[en]=mochios
+Comment=mochios SDDM login theme
+Comment[en]=mochios SDDM login theme
+Type=X-SDDM-Theme
+Version=0.1.0

@@ -1,0 +1,16 @@
+# Maintainer: mochios team
+pkgname=mochios-branding
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="mochios KDE Plasma branding and themes"
+arch=('x86_64')
+url="https://mochios.dev"
+license=('GPL3')
+source=("mochios-branding-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir"
+  install -dm755 "$pkgdir/usr/share"
+  cp -r --no-preserve=ownership usr/share/* "$pkgdir/usr/share/"
+}

@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import os, sys
+sys.path.insert(0, '/usr/lib/mochiinstall')
+from mochiinstall_app import main
+
+if os.geteuid() != 0:
+    os.execvp("sudo", ["sudo", "-E", sys.executable] + sys.argv)
+else:
+    main()

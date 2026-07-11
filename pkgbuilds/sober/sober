@@ -1,0 +1,11 @@
+#!/bin/bash
+if ! command -v flatpak &>/dev/null; then
+  echo "error: flatpak is not installed" >&2
+  exit 1
+fi
+if ! flatpak list 2>/dev/null | grep -q org.vinegarhq.Sober; then
+  echo "info: Sober is not installed. Install it with:" >&2
+  echo "  flatpak install flathub org.vinegarhq.Sober" >&2
+  exit 1
+fi
+exec flatpak run org.vinegarhq.Sober "$@"

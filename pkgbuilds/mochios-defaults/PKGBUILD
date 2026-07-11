@@ -1,0 +1,16 @@
+# Maintainer: mochios team
+pkgname=mochios-defaults
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="mochios default system configuration files"
+arch=('x86_64')
+url="https://mochios.dev"
+license=('GPL3')
+source=("mochios-defaults-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir"
+  cp -r --no-preserve=ownership etc "$pkgdir/"
+  cp -r --no-preserve=ownership usr "$pkgdir/"
+}

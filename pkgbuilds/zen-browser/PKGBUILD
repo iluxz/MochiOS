@@ -1,0 +1,72 @@
+# Maintainer: mochios team
+pkgname=zen-browser
+pkgver=1.21.4b
+pkgrel=1
+pkgdesc="Performance oriented Firefox-based web browser"
+arch=('x86_64')
+url="https://github.com/zen-browser/desktop"
+license=('MPL-2.0')
+depends=('gtk3' 'libxt' 'shared-mime-info' 'dbus-glib' 'nss' 'gnu-free-fonts' 'systemd-libs' 'ffmpeg4.4')
+provides=("zen-browser=$pkgver")
+conflicts=('zen-browser')
+options=('!strip')
+source=("https://github.com/zen-browser/desktop/releases/download/$pkgver/zen.linux-x86_64.tar.xz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$srcdir"
+  local _d
+  for _d in */; do
+    [ -f "$_d/zen" ] || [ -f "$_d/zen-bin" ] && return 0
+  done
+  mkdir -p zen
+  mv -f [a-z]*.so [a-z]*.pak chrome defaults dictionaries distribution features fonts gmp-clearkey gmp-widevine icd ia2_resources libldap nspr nss plugdefs proxies updater vk_swiftshader*  zen zen-bin 2>/dev/null zen/ || true
+}
+
+package() {
+  cd "$srcdir"
+
+  local _dir="$srcdir"
+  for _d in "$srcdir"/*/; do
+    [ -f "$_d/zen" ] || [ -f "$_d/zen-bin" ] && { _dir="$_d"; break; }
+  done
+
+  install -d "$pkgdir/opt/zen-browser"
+  cp -a "$_dir"/* "$pkgdir/opt/zen-browser/"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/zen-browser" <<'EOF'
+#!/bin/sh
+exec /opt/zen-browser/zen "$@"
+EOF
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/zen-browser.desktop" <<'EOF'
+[Desktop Entry]
+Name=Zen Browser
+GenericName=Web Browser
+Comment=Performance oriented Firefox-based web browser
+Exec=/opt/zen-browser/zen %u
+Terminal=false
+Type=Application
+Icon=zen-browser
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=true
+EOF
+
+  for _size in 16 32 48 64 128; do
+    install -d "$pkgdir/usr/share/icons/hicolor/${_size}x${_size}/apps"
+    if [ -f "$pkgdir/opt/zen-browser/browser/chrome/icons/default/default${_size}.png" ]; then
+      ln -sf "/opt/zen-browser/browser/chrome/icons/default/default${_size}.png" \
+        "$pkgdir/usr/share/icons/hicolor/${_size}x${_size}/apps/zen-browser.png"
+    fi
+  done
+
+  install -d "$pkgdir/opt/zen-browser/distribution"
+  cat > "$pkgdir/opt/zen-browser/distribution/policies.json" <<'POLICY'
+{
+  "policies": {
+    "DisableAppUpdate": true
+  }
+}
+POLICY
+}

@@ -1,0 +1,17 @@
+# Maintainer: mochios team
+pkgname=mochi-abroot
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="A/B root atomic update system for mochios"
+arch=('x86_64')
+url="https://mochios.dev"
+license=('GPL3')
+depends=('btrfs-progs' 'systemd' 'arch-install-scripts')
+source=("mochi-abroot-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir"
+  install -Dm755 abroot.sh "$pkgdir/usr/bin/abroot"
+  install -Dm644 abroot.conf "$pkgdir/etc/abroot.conf"
+}
