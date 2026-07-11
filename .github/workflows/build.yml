@@ -72,8 +72,6 @@ jobs:
 
       - name: Upload build log to Gist
         if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f build.log ] && [ -s build.log ]; then
             echo "Creating gist with build log..."
@@ -88,7 +86,7 @@ gist = {
 print(json.dumps(gist))
 ")
             RESPONSE=$(curl -s -X POST \
-              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               https://api.github.com/gists \
               -d "$PAYLOAD" 2>/dev/null)
