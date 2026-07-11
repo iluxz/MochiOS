@@ -1,2 +1,0 @@
-# mochi user passwordless sudo for live environment
-mochi ALL=(ALL:ALL) NOPASSWD: ALL

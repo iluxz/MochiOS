@@ -55,8 +55,6 @@ cp "$MOCHIOS_DIR/pkgbuilds/zen-browser"/zen-browser-[0-9]*.pkg.tar.zst "$REPO_DI
 
 echo "==> rebuilding mochios-defaults pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"
-pkgver=$(_get_pkgver PKGBUILD)
-tar czf "mochios-defaults-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochios-defaults" --exclude="mochios-defaults-$pkgver.tar.gz" etc usr
 sudo -u mochi makepkg -cf --noconfirm
 cp "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"/mochios-defaults-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
@@ -118,6 +116,23 @@ mkdir -p "$ISO_DIR/airootfs/opt/mochi-pkgs"
 for pkg in mochi mochiinstall mochi-abroot mochios-defaults mochios-branding; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
 done
+
+echo "==> stamping build date into mochios-release..."
+BUILD_DATE=$(date +%Y-%m-%d)
+sed -i "s/@BUILD_DATE@/$BUILD_DATE/" "$ISO_DIR/airootfs/etc/mochios-release"
+
+echo "==> staging secure boot keys..."
+SB_KEY_SRC="$MOCHIOS_DIR/secure-boot"
+SB_KEY_DST="$ISO_DIR/airootfs/var/lib/sbctl/keys/db"
+if [ -f "$SB_KEY_SRC/db.key" ] && [ -f "$SB_KEY_SRC/db.crt" ]; then
+  mkdir -p "$SB_KEY_DST"
+  cp "$SB_KEY_SRC/db.key" "$SB_KEY_DST/db.key"
+  cp "$SB_KEY_SRC/db.crt" "$SB_KEY_DST/db.pem"
+  chmod 600 "$SB_KEY_DST/db.key"
+  echo "  secure boot keys staged"
+else
+  echo "  [yellow]secure boot keys not found, sbctl will generate on first boot[/]"
+fi
 
 echo "==> building iso..."
 mkdir -p "$OUT_DIR"

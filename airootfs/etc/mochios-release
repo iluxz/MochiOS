@@ -1,3 +1,0 @@
-MOCHIOS_BUILD_ID="rolling"
-MOCHIOS_BUILD_DATE="$(date +%Y-%m-%d)"
-MOCHIOS_VERSION="0.1.0"

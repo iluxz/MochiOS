@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=MochiOS Wallpaper
-Comment=Set MochiOS wallpaper
-Exec=mochi-wallpaper light
-Terminal=false
-X-KDE-autostart-phase=2
-NoDisplay=true
