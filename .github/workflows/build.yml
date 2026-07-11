@@ -70,16 +70,35 @@ jobs:
           export SIGN_KEY="ci@mochios.dev"
           bash build.sh 2>&1 | tee build.log || true
 
-      - name: Upload build log to pastebin
+      - name: Upload build log to Gist
         if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          URL=$(cat build.log 2>/dev/null | curl -s -F 'f:1=<-' ix.io 2>/dev/null || echo "pastebin failed")
-          echo "Paste URL: $URL"
-          echo "## Build Log" >> $GITHUB_STEP_SUMMARY
-          echo "Paste URL: $URL" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat build.log 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "No build log found" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f build.log ] && [ -s build.log ]; then
+            echo "Creating gist with build log..."
+            PAYLOAD=$(python3 -c "
+import json, sys
+content = open('build.log').read()
+gist = {
+    'description': 'MochiOS build log',
+    'public': True,
+    'files': {'build.log': {'content': content}}
+}
+print(json.dumps(gist))
+")
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/gists \
+              -d "$PAYLOAD" 2>/dev/null)
+            GIST_URL=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('html_url','FAILED'))" 2>/dev/null)
+            echo "Gist URL: $GIST_URL"
+            echo "Build log gist: $GIST_URL" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No build log found or empty"
+            echo "No build log found" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: List ISO output
         run: |
