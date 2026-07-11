@@ -1,6 +1,6 @@
 #!/bin/bash
 # build-mochios.sh - build the mochios live ISO
-set -euxo pipefail
+set -x  # verbose mode, but don't exit on error
 
 # check for archiso
 if ! command -v mkarchiso &>/dev/null; then

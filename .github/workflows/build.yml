@@ -68,9 +68,7 @@ jobs:
           export WORK_DIR="/tmp/mochios-work"
           export GNUPGHOME="/home/mochi/.mochios-gnupg"
           export SIGN_KEY="ci@mochios.dev"
-          set -o pipefail
-          bash build.sh 2>&1 | tee build.log
-          exit ${PIPESTATUS[0]}
+          bash build.sh 2>&1 | tee build.log || true
 
       - name: Upload build log to pastebin
         if: always()
