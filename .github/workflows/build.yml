@@ -72,22 +72,16 @@ jobs:
           bash build.sh 2>&1 | tee build.log
           exit ${PIPESTATUS[0]}
 
-      - name: Show build log
+      - name: Upload build log to pastebin
         if: always()
         run: |
-          echo "# Build Log" >> $GITHUB_STEP_SUMMARY
+          URL=$(cat build.log 2>/dev/null | curl -s -F 'f:1=<-' ix.io 2>/dev/null || echo "pastebin failed")
+          echo "Paste URL: $URL"
+          echo "## Build Log" >> $GITHUB_STEP_SUMMARY
+          echo "Paste URL: $URL" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat build.log 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "No build log found" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat build.log 2>/dev/null || echo "No build log found"
-
-      - name: Upload build log (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
-          retention-days: 7
 
       - name: List ISO output
         run: |
