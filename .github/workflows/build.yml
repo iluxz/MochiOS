@@ -68,13 +68,14 @@ jobs:
           export WORK_DIR="/tmp/mochios-work"
           export GNUPGHOME="/home/mochi/.mochios-gnupg"
           export SIGN_KEY="ci@mochios.dev"
-          bash build.sh 2>&1 | tee build.log
+          bash build.sh 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
 
       - name: Upload build log
-        if: failure()
+        if: always()
         run: |
           if [ -f build.log ] && [ -s build.log ]; then
-            cat build.log
+            echo "Build log (last 50 lines):"
+            tail -50 build.log
           else
             echo "No build log found or empty"
           fi
