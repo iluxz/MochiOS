@@ -82,6 +82,10 @@ jobs:
             echo "Uploading to pastebin..."
             PASTE_URL=$(cat build.log | curl -s -F 'f:1=<-' ix.io 2>/dev/null || echo "upload failed")
             echo "Paste URL: $PASTE_URL"
+            # Also emit each line as an annotation for visibility
+            while IFS= read -r line; do
+              echo "::warning::$line"
+            done < build.log
           else
             echo "No build log found or empty"
           fi
