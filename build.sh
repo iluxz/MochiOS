@@ -117,6 +117,17 @@ for pkg in mochi mochiinstall mochi-abroot mochios-defaults mochios-branding; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
 done
 
+echo "==> staging optional packages for installer..."
+mkdir -p "$ISO_DIR/airootfs/opt/mochi-optional-pkgs"
+for pkg in zen-browser sober; do
+  pkg_file="$REPO_DIR/os/x86_64/$pkg-[0-9]*.pkg.tar.zst"
+  if ls $pkg_file &>/dev/null; then
+    cp $pkg_file "$ISO_DIR/airootfs/opt/mochi-optional-pkgs/"
+  else
+    echo "  [yellow]$pkg package not found, skipping[/]"
+  fi
+done
+
 echo "==> stamping build date into mochios-release..."
 BUILD_DATE=$(date +%Y-%m-%d)
 sed -i "s/@BUILD_DATE@/$BUILD_DATE/" "$ISO_DIR/airootfs/etc/mochios-release"

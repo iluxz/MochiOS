@@ -8,7 +8,7 @@ iso_application="MochiOS Live/Install DVD"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
 install_dir="mochi"
 buildmodes=('iso')
-bootmodes=('bios.syslinux' 'uefi-ia32.systemd-boot' 'uefi-x64.systemd-boot')
+bootmodes=('bios.syslinux' 'uefi.systemd-boot')
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"
 airootfs_image_tool_options=('-comp' 'xz' '-Xbcj' 'x86' '-b' '1M' '-Xdict-size' '1M')

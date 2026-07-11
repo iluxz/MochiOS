@@ -226,9 +226,6 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     ch(["hwclock", "--systohc"])
     ch(["mkinitcpio", "-P"], to=300)
 
-    sep = part_suffix(disk)
-    root_dev = f"{disk}{sep}4"
-
     lfn("writing fstab...")
     fstab = (
         f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2\n"
@@ -244,7 +241,7 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     ch(["systemctl", "daemon-reload"])
 
     (t / "etc/abroot.conf").write_text(
-        f"ROOT_PART=\"{root_dev}\"\n"
+        f"ROOT_PART=\"UUID={root_uuid}\"\n"
         f"BTRFS_MOUNT=\"/mnt/btrfs\"\n"
         f"ACTIVE_ROOT=\"root_a\"\n"
         f"NEXT_ROOT=\"root_b\"\n"

@@ -1,6 +1,6 @@
 # Maintainer: mochios team
 pkgname=zen-browser
-pkgver=1.21.4b
+pkgver=1.21.6b
 pkgrel=1
 pkgdesc="Performance oriented Firefox-based web browser"
 arch=('x86_64')

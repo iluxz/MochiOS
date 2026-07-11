@@ -7,3 +7,7 @@ arch=('any')
 url="https://mochios.dev"
 license=('GPL3')
 depends=('zsh' 'sudo' 'btrfs-progs')
+
+package() {
+  true
+}
