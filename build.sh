@@ -35,7 +35,7 @@ _get_pkgver() {
 echo "==> rebuilding mochi pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochi"
 pkgver=$(_get_pkgver PKGBUILD)
-tar czf "mochi-$pkgver.tar.gz" -C "$MOCHIOS_DIR/mochi" --transform="s/^/mochi\//" .
+tar czf "mochi-$pkgver.tar.gz" -C "$MOCHIOS_DIR/mochi" .
 sudo -u mochi makepkg -cf --noconfirm
 cp "$MOCHIOS_DIR/pkgbuilds/mochi"/mochi-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
@@ -43,7 +43,6 @@ echo "==> rebuilding mochiinstall pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochiinstall"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochiinstall-$pkgver.tar.gz" -C "$MOCHIOS_DIR" \
-  --transform="s/^/mochiinstall-$pkgver\//" \
   mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py
 sudo -u mochi makepkg -cf --noconfirm
 cp "$MOCHIOS_DIR/pkgbuilds/mochiinstall"/mochiinstall-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
