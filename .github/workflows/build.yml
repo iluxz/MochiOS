@@ -65,7 +65,7 @@ jobs:
           export REPO_DIR="$PWD/repo"
           export OUT_DIR="$PWD/out"
           export ISO_DIR="$PWD/archiso-mochios"
-          export WORK_DIR="/tmp/mochios-work"
+          export WORK_DIR="$PWD/work"
           export GNUPGHOME="/home/mochi/.mochios-gnupg"
           export SIGN_KEY="ci@mochios.dev"
           bash build.sh 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
