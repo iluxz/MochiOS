@@ -71,22 +71,10 @@ jobs:
           bash build.sh 2>&1 | tee build.log
 
       - name: Upload build log
-        if: always()
+        if: failure()
         run: |
           if [ -f build.log ] && [ -s build.log ]; then
-            echo "Build log size: $(wc -c < build.log) bytes"
-            echo "Build log contents:"
-            echo "==================="
             cat build.log
-            echo "==================="
-            echo "Uploading to pastebin..."
-            PASTE_URL=$(cat build.log | curl -s -F 'f:1=<-' ix.io 2>/dev/null || echo "upload failed")
-            echo "Paste URL: $PASTE_URL"
-            # Emit last lines of build.log as annotations (tail)
-            echo "::warning::===== last 30 lines of build.log ====="
-            tail -30 build.log | while IFS= read -r line; do
-              echo "::warning::$line"
-            done
           else
             echo "No build log found or empty"
           fi
