@@ -70,23 +70,20 @@ jobs:
           export SIGN_KEY="ci@mochios.dev"
           bash build.sh 2>&1 | tee build.log || true
 
-      - name: Upload build log to Gist
+      - name: Upload build log
         if: always()
         run: |
           if [ -f build.log ] && [ -s build.log ]; then
-            echo "Creating gist with build log..."
-            PAYLOAD=$(python3 -c "import json,sys;c=open('build.log').read();print(json.dumps({'description':'MochiOS build log','public':True,'files':{'build.log':{'content':c}}}))")
-            RESPONSE=$(curl -s -X POST \
-              -H "Authorization: Bearer $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/gists \
-              -d "$PAYLOAD" 2>/dev/null)
-            GIST_URL=$(echo "$RESPONSE" | python3 -c "import json,sys;print(json.load(sys.stdin).get('html_url','FAILED'))" 2>/dev/null)
-            echo "Gist URL: $GIST_URL"
-            echo "Build log gist: $GIST_URL" >> $GITHUB_STEP_SUMMARY
+            echo "Build log size: $(wc -c < build.log) bytes"
+            echo "Build log contents:"
+            echo "==================="
+            cat build.log
+            echo "==================="
+            echo "Uploading to pastebin..."
+            PASTE_URL=$(cat build.log | curl -s -F 'f:1=<-' ix.io 2>/dev/null || echo "upload failed")
+            echo "Paste URL: $PASTE_URL"
           else
             echo "No build log found or empty"
-            echo "No build log found" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: List ISO output
