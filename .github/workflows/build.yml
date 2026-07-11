@@ -68,7 +68,7 @@ jobs:
           export WORK_DIR="/tmp/mochios-work"
           export GNUPGHOME="/home/mochi/.mochios-gnupg"
           export SIGN_KEY="ci@mochios.dev"
-          bash build.sh 2>&1 | tee build.log || true
+          bash build.sh 2>&1 | tee build.log
 
       - name: Upload build log
         if: always()
@@ -82,10 +82,11 @@ jobs:
             echo "Uploading to pastebin..."
             PASTE_URL=$(cat build.log | curl -s -F 'f:1=<-' ix.io 2>/dev/null || echo "upload failed")
             echo "Paste URL: $PASTE_URL"
-            # Also emit each line as an annotation for visibility
-            while IFS= read -r line; do
+            # Emit last lines of build.log as annotations (tail)
+            echo "::warning::===== last 30 lines of build.log ====="
+            tail -30 build.log | while IFS= read -r line; do
               echo "::warning::$line"
-            done < build.log
+            done
           else
             echo "No build log found or empty"
           fi

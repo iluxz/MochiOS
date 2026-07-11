@@ -32,6 +32,8 @@ _get_pkgver() {
   grep -oP '^pkgver=\K.*' "$pkgbuild" | head -1
 }
 
+mkdir -p "$REPO_DIR/os/x86_64"
+
 echo "==> rebuilding mochi pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochi"
 pkgver=$(_get_pkgver PKGBUILD)
