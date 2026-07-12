@@ -72,6 +72,8 @@ mkdir -p "$ISO_DIR/airootfs/opt/mochi-pkgs"
 for pkg in mochi; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
 done
+# also copy the repo database so pacman can resolve the custom repo in the chroot
+cp -L "$REPO_DIR/os/x86_64/mochi.db" "$ISO_DIR/airootfs/opt/mochi-pkgs/mochi.db" 2>/dev/null || true
 
 echo "==> stamping build date into mochios-release..."
 BUILD_DATE=$(date +%Y-%m-%d)
