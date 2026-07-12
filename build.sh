@@ -39,15 +39,43 @@ echo "==> rebuilding mochi pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochi"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochi-$pkgver.tar.gz" -C "$MOCHIOS_DIR/mochi" .
-sudo -u mochi makepkg -cf --noconfirm 2>&1
-echo "::group::mochi build output"
-ls -la "$MOCHIOS_DIR/pkgbuilds/mochi"/mochi-[0-9]*.pkg.tar.zst
-echo "::endgroup::"
+sudo -u mochi makepkg -cf --noconfirm
 cp "$MOCHIOS_DIR/pkgbuilds/mochi"/mochi-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
+echo "==> rebuilding mochiinstall pkg..."
+cd "$MOCHIOS_DIR/pkgbuilds/mochiinstall"
+pkgver=$(_get_pkgver PKGBUILD)
+tar czf "mochiinstall-$pkgver.tar.gz" -C "$MOCHIOS_DIR" \
+  mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py
+sudo -u mochi makepkg -cf --noconfirm
+cp "$MOCHIOS_DIR/pkgbuilds/mochiinstall"/mochiinstall-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
+echo "==> rebuilding mochios-defaults pkg..."
+cd "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"
+sudo -u mochi makepkg -cf --noconfirm
+cp "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"/mochios-defaults-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
+echo "==> rebuilding mochios-branding pkg..."
+cd "$MOCHIOS_DIR/pkgbuilds/mochios-branding"
+pkgver=$(_get_pkgver PKGBUILD)
+tar czf "mochios-branding-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochios-branding" --exclude="mochios-branding-$pkgver.tar.gz" usr
+sudo -u mochi makepkg -cf --noconfirm
+cp "$MOCHIOS_DIR/pkgbuilds/mochios-branding"/mochios-branding-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
+echo "==> rebuilding mochi-abroot pkg..."
+cd "$MOCHIOS_DIR/pkgbuilds/mochi-abroot"
+pkgver=$(_get_pkgver PKGBUILD)
+tar czf "mochi-abroot-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochi-abroot" --exclude="mochi-abroot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' abroot.sh abroot.conf
+sudo -u mochi makepkg -cf --noconfirm
+cp "$MOCHIOS_DIR/pkgbuilds/mochi-abroot"/mochi-abroot-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
 echo "==> signing packages..."
 for pattern in \
-  "$REPO_DIR/os/x86_64/"mochi-[0-9]*.pkg.tar.zst; do
+  "$REPO_DIR/os/x86_64/"mochi-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"mochiinstall-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"mochios-defaults-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"mochios-branding-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"mochi-abroot-[0-9]*.pkg.tar.zst; do
   for pkg in $pattern; do
     [ -f "$pkg" ] && sign_pkg "$pkg"
   done
@@ -58,6 +86,10 @@ cd "$REPO_DIR"
 rm -f os/x86_64/mochi.db.tar.zst.lck
 rm -f os/x86_64/mochi.db.tar.zst.sig
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochi-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochiinstall-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-defaults-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-branding-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochi-abroot-[0-9]*.pkg.tar.zst
 
 echo "==> staging public key for ISO..."
 if [ -f "$REPO_DIR/pubkey/mochios-key.pub" ]; then
@@ -69,7 +101,7 @@ fi
 
 echo "==> staging mochi packages for installer..."
 mkdir -p "$ISO_DIR/airootfs/opt/mochi-pkgs"
-for pkg in mochi; do
+for pkg in mochi mochiinstall mochios-defaults mochios-branding mochi-abroot; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
 done
 
