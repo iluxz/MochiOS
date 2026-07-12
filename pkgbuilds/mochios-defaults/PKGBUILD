@@ -7,6 +7,8 @@ arch=('any')
 url="https://mochios.dev"
 license=('GPL3')
 depends=('zsh' 'sudo' 'btrfs-progs')
+source=()
+sha256sums=()
 
 package() {
   install -d "$pkgdir/etc/mochios"
