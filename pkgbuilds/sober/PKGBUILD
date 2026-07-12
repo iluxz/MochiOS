@@ -6,6 +6,7 @@ pkgdesc="Roblox on Linux - experimental interoperability layer (flatpak wrapper)
 arch=('any')
 url="https://sober.vinegarhq.org"
 license=('custom:proprietary')
+depends=('flatpak')
 source=("sober-$pkgver.tar.gz")
 sha256sums=('SKIP')
 

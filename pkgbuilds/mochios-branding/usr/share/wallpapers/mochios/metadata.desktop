@@ -2,6 +2,7 @@
 Name=mochios
 Name[en]=mochios
 Author=mochios team
+DefaultFile=1920x1080.png
 
 [Wallpaper1920x1080-dark.png]
 Name=Dark

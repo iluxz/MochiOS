@@ -35,6 +35,7 @@ Rectangle {
                     radius: 8
                 }
                 Layout.fillWidth: true
+                Keys.onReturnPressed: password.forceActiveFocus()
             }
 
             TextField {
@@ -47,6 +48,7 @@ Rectangle {
                     radius: 8
                 }
                 Layout.fillWidth: true
+                Keys.onReturnPressed: sddm.login(username.text, password.text)
             }
 
             Button {

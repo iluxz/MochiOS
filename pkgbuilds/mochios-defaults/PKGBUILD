@@ -1,11 +1,12 @@
 # Maintainer: mochios team
 pkgname=mochios-defaults
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc="mochios default system configuration files"
 arch=('any')
 url="https://mochios.dev"
 license=('GPL3')
+depends=('zsh' 'sudo' 'btrfs-progs')
 source=("mochios-defaults-$pkgver.tar.gz")
 sha256sums=('SKIP')
 
@@ -13,4 +14,6 @@ package() {
   cd "$srcdir"
   install -Dm644 mochios-release "$pkgdir/etc/mochios-release"
   echo "$pkgver-$pkgrel" > "$pkgdir/etc/mochios-defaults-version"
+  install -Dm755 usr/bin/mochi-wallpaper "$pkgdir/usr/bin/mochi-wallpaper"
+  install -Dm644 etc/xdg/autostart/mochi-wallpaper.desktop "$pkgdir/etc/xdg/autostart/mochi-wallpaper.desktop"
 }
