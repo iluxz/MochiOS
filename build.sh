@@ -54,15 +54,7 @@ echo "==> rebuilding mochios-defaults pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochios-defaults-$pkgver.tar.gz" --exclude="mochios-defaults-$pkgver.tar.gz" --exclude='pkg' --exclude='src' mochios-release
-TEMP_LOG=$(mktemp /tmp/makepkg.XXXXXX)
-chmod a+r "$TEMP_LOG"
-sudo -u mochi makepkg -cf --noconfirm > "$TEMP_LOG" 2>&1 || {
-  rc=$?
-  echo "::error::mochios-defaults makepkg failed (exit $rc):"
-  while IFS= read -r line; do echo "::error::$line"; done < "$TEMP_LOG"
-  exit $rc
-}
-rm -f "$TEMP_LOG"
+sudo -u mochi makepkg -cf --noconfirm
 cp "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"/mochios-defaults-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
 echo "==> rebuilding mochios-branding pkg..."
@@ -79,13 +71,27 @@ tar czf "mochi-abroot-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochi-abroot" -
 sudo -u mochi makepkg -cf --noconfirm
 cp "$MOCHIOS_DIR/pkgbuilds/mochi-abroot"/mochi-abroot-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
+echo "==> rebuilding sober pkg..."
+cd "$MOCHIOS_DIR/pkgbuilds/sober"
+pkgver=$(_get_pkgver PKGBUILD)
+tar czf "sober-$pkgver.tar.gz" --exclude="sober-$pkgver.tar.gz" --exclude='pkg' --exclude='src' sober-wrapper.sh
+sudo -u mochi makepkg -cf --noconfirm
+cp "$MOCHIOS_DIR/pkgbuilds/sober"/sober-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
+echo "==> rebuilding zen-browser pkg..."
+cd "$MOCHIOS_DIR/pkgbuilds/zen-browser"
+sudo -u mochi makepkg -cf --noconfirm
+cp "$MOCHIOS_DIR/pkgbuilds/zen-browser"/zen-browser-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
 echo "==> signing packages..."
 for pattern in \
   "$REPO_DIR/os/x86_64/"mochi-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochiinstall-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochios-defaults-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochios-branding-[0-9]*.pkg.tar.zst \
-  "$REPO_DIR/os/x86_64/"mochi-abroot-[0-9]*.pkg.tar.zst; do
+  "$REPO_DIR/os/x86_64/"mochi-abroot-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"zen-browser-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"sober-[0-9]*.pkg.tar.zst; do
   for pkg in $pattern; do
     [ -f "$pkg" ] && sign_pkg "$pkg"
   done
@@ -100,6 +106,8 @@ GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/moch
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-defaults-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-branding-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochi-abroot-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/zen-browser-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/sober-[0-9]*.pkg.tar.zst
 
 echo "==> staging public key for ISO..."
 if [ -f "$REPO_DIR/pubkey/mochios-key.pub" ]; then
@@ -111,7 +119,7 @@ fi
 
 echo "==> staging mochi packages for installer..."
 mkdir -p "$ISO_DIR/airootfs/opt/mochi-pkgs"
-for pkg in mochi mochiinstall mochios-defaults mochios-branding mochi-abroot; do
+for pkg in mochi mochiinstall mochios-defaults mochios-branding mochi-abroot zen-browser sober; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
 done
 

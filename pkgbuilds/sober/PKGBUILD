@@ -6,13 +6,10 @@ pkgdesc="Roblox on Linux - experimental interoperability layer (flatpak wrapper)
 arch=('any')
 url="https://sober.vinegarhq.org"
 license=('custom:proprietary')
-depends=('flatpak')
-source=()
-sha256sums=()
+source=("sober-$pkgver.tar.gz")
+sha256sums=('SKIP')
 
 package() {
-  install -Dm755 /dev/stdin "$pkgdir/usr/bin/sober" <<'WRAPPER'
-#!/bin/bash
-exec flatpak run org.vinegarhq.Sober "$@"
-WRAPPER
+  cd "$srcdir"
+  install -Dm755 sober-wrapper.sh "$pkgdir/usr/bin/sober"
 }
