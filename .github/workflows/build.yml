@@ -74,8 +74,8 @@ jobs:
         if: always()
         run: |
           if [ -f build.log ] && [ -s build.log ]; then
-            echo "Build log (last 50 lines):"
-            tail -50 build.log
+            echo "=== Full build log ==="
+            cat build.log
           else
             echo "No build log found or empty"
           fi

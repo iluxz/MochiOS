@@ -1,5 +1,9 @@
 #!/bin/bash
 # build-mochios.sh - build the mochios live ISO
+set -euo pipefail
+
+# error handler: prints line number and command that failed
+trap 'echo "::error::build.sh failed at line $LINENO (exit code $?)"; tail -20 build.log 2>/dev/null | sed "s/^/::error::/" || true' ERR
 
 # check for archiso
 if ! command -v mkarchiso &>/dev/null; then
