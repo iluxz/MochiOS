@@ -6,7 +6,6 @@ pkgdesc="mochios default system configuration files"
 arch=('any')
 url="https://mochios.dev"
 license=('GPL3')
-depends=('zsh' 'sudo' 'btrfs-progs')
 source=("mochios-defaults-$pkgver.tar.gz")
 sha256sums=('SKIP')
 
