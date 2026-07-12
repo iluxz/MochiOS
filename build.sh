@@ -52,6 +52,8 @@ cp "$MOCHIOS_DIR/pkgbuilds/mochiinstall"/mochiinstall-[0-9]*.pkg.tar.zst "$REPO_
 
 echo "==> rebuilding mochios-defaults pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"
+pkgver=$(_get_pkgver PKGBUILD)
+tar czf "mochios-defaults-$pkgver.tar.gz" --exclude="mochios-defaults-$pkgver.tar.gz" --exclude='pkg' --exclude='src' mochios-release
 sudo -u mochi makepkg -cf --noconfirm
 cp "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"/mochios-defaults-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 

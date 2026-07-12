@@ -7,10 +7,11 @@ arch=('any')
 url="https://mochios.dev"
 license=('GPL3')
 depends=('zsh' 'sudo' 'btrfs-progs')
-source=()
-sha256sums=()
+source=("mochios-defaults-$pkgver.tar.gz")
+sha256sums=('SKIP')
 
 package() {
-  install -d "$pkgdir/etc/mochios"
-  echo "$pkgver-$pkgrel" > "$pkgdir/etc/mochios/defaults-version"
+  cd "$srcdir"
+  install -Dm644 mochios-release "$pkgdir/etc/mochios-release"
+  echo "$pkgver-$pkgrel" > "$pkgdir/etc/mochios-defaults-version"
 }
