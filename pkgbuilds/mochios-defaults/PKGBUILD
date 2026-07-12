@@ -9,5 +9,6 @@ license=('GPL3')
 depends=('zsh' 'sudo' 'btrfs-progs')
 
 package() {
-  true
+  install -d "$pkgdir/etc/mochios"
+  echo "$pkgver-$pkgrel" > "$pkgdir/etc/mochios/defaults-version"
 }
