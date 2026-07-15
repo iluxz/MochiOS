@@ -19,6 +19,7 @@ var subcommands = []string{
 	"rollback",
 	"snapshot",
 	"run",
+	"self-update", "update-self",
 	"help",
 }
 
@@ -65,6 +66,8 @@ func Execute() error {
 		return snapshot(args)
 	case "run":
 		return runFile(args)
+	case "self-update", "update-self":
+		return selfUpdate(args)
 	case "help", "--help", "-h":
 		printUsage()
 		return nil
@@ -86,6 +89,7 @@ usage:
   mochi rollback       mochios only: rollback snapshot
   mochi snapshot       mochios only: list snapshots
   mochi run <file>     run scripts in any supported language
+  mochi self-update    update mochi itself from github
   mochi help           show this help`)
 }
 
