@@ -89,13 +89,17 @@ jobs:
           path: build.log
           retention-days: 7
 
-      - name: Annotate build errors
+      - name: Annotate full build log
         if: failure()
         run: |
           if [ -f build.log ] && [ -s build.log ]; then
-            while IFS= read -r line; do
-              echo "::error file=build.sh::$line"
-            done < build.log
+            # annotate the full log as a single multiline annotation
+            # escape % and newlines for github workflow commands
+            log="$(cat build.log | head -c 3000)"
+            log="${log//'%'/'%25'}"
+            log="${log//$'\n'/'%0A'}"
+            log="${log//$'\r'/'%0D'}"
+            echo "::error file=build.sh,title=Build Log::${log}"
           fi
 
       - name: List ISO output
