@@ -34,10 +34,12 @@ jobs:
 
       - name: create signing key
         run: |
+          mkdir -p /home/mochi/.mochios-gnupg /tmp/mochios/repo/pubkey
+          chown -R mochi:mochi /home/mochi/.mochios-gnupg
           cd /tmp/mochios
-          mkdir -p repo/pubkey
-          printf 'Key-Type: RSA\nKey-Length: 2048\nName-Real: MochiOS CI\nName-Email: ci@mochios.dev\nExpire-Date: 0\n%%no-protection\n' | gpg --batch --gen-key 2>&1
-          gpg --export --armor ci@mochios.dev > repo/pubkey/mochios-key.pub
+          printf 'Key-Type: RSA\nKey-Length: 2048\nName-Real: MochiOS CI\nName-Email: ci@mochios.dev\nExpire-Date: 0\n%%no-protection\n' | gpg --homedir /home/mochi/.mochios-gnupg --batch --gen-key 2>&1
+          gpg --homedir /home/mochi/.mochios-gnupg --export --armor ci@mochios.dev > repo/pubkey/mochios-key.pub
+          chmod 644 /home/mochi/.mochios-gnupg/pubring.kbx /home/mochi/.mochios-gnupg/trustdb.gpg 2>/dev/null || true
 
       - name: create secure boot keys
         run: |
@@ -52,7 +54,7 @@ jobs:
           mkdir -p /tmp/mochios-work /tmp/mochios/out
           MOCHIOS_DIR=/tmp/mochios \
           WORK_DIR=/tmp/mochios-work \
-          GNUPGHOME=/root/.gnupg \
+          GNUPGHOME=/home/mochi/.mochios-gnupg \
           SIGN_KEY=ci@mochios.dev \
           bash /tmp/mochios/build.sh 2>&1
 
