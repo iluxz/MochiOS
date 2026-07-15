@@ -21,9 +21,8 @@ package() {
   install -dm755 "$pkgdir/usr/share/color-schemes"
   cp --no-preserve=ownership usr/share/color-schemes/mochios-nightly.colors "$pkgdir/usr/share/color-schemes/"
 
-  install -dm755 "$pkgdir/usr/share/wallpapers"
-  cp --no-preserve=ownership usr/share/wallpapers/mochios-nightly/metadata.desktop "$pkgdir/usr/share/wallpapers/mochios-nightly/"
   install -dm755 "$pkgdir/usr/share/wallpapers/mochios-nightly/contents/images"
+  cp --no-preserve=ownership usr/share/wallpapers/mochios-nightly/metadata.desktop "$pkgdir/usr/share/wallpapers/mochios-nightly/"
   ln -sf ../../mochios/contents/images/1920x1080.png "$pkgdir/usr/share/wallpapers/mochios-nightly/contents/images/1920x1080.png"
   ln -sf ../../mochios/contents/images/1920x1080-dark.png "$pkgdir/usr/share/wallpapers/mochios-nightly/contents/images/1920x1080-dark.png"
 
