@@ -86,6 +86,5 @@ jobs:
           cd /tmp/iso
           iso=$(ls *.iso 2>/dev/null | head -1)
           if [ -z "$iso" ]; then echo "no iso found"; exit 1; fi
-          gh release view "$RELEASE_TAG" --json url &>/dev/null && \
-            gh release upload "$RELEASE_TAG" "$iso" --clobber || \
-            gh release create "$RELEASE_TAG" "$iso" --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+          gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
+          gh release create "$RELEASE_TAG" "$iso" --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
