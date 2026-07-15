@@ -1,0 +1,18 @@
+name = "bush"
+x = 42
+
+function greet(name)
+  print("yo " + name + "!")
+
+greet(name)
+
+if x > 10
+  print("big number")
+else
+  print("small number")
+
+for i = 0, 3
+  print(i)
+
+stuff = ["a", "b", "c"]
+print(stuff[0])

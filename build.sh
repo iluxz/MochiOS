@@ -39,7 +39,7 @@ echo "==> rebuilding mochi pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochi"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochi-$pkgver.tar.gz" -C "$MOCHIOS_DIR/mochi" .
-sudo -u mochi makepkg -cf --noconfirm --nodeps --nodeps
+sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochi"/mochi-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
 echo "==> rebuilding mochiinstall pkg..."
@@ -47,21 +47,21 @@ cd "$MOCHIOS_DIR/pkgbuilds/mochiinstall"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochiinstall-$pkgver.tar.gz" -C "$MOCHIOS_DIR" \
   mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py
-sudo -u mochi makepkg -cf --noconfirm --nodeps --nodeps
+sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochiinstall"/mochiinstall-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
 echo "==> rebuilding mochios-defaults pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochios-defaults-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochios-defaults" --exclude="mochios-defaults-$pkgver.tar.gz" --exclude='pkg' --exclude='src' mochios-release usr etc
-sudo -u mochi makepkg -cf --noconfirm --nodeps --nodeps
+sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"/mochios-defaults-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
 echo "==> rebuilding mochios-branding pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochios-branding"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochios-branding-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochios-branding" --exclude="mochios-branding-$pkgver.tar.gz" usr
-sudo -u mochi makepkg -cf --noconfirm --nodeps --nodeps
+sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochios-branding"/mochios-branding-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
 echo "==> rebuilding mochi-abroot pkg..."
