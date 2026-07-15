@@ -89,6 +89,15 @@ jobs:
           path: build.log
           retention-days: 7
 
+      - name: Annotate build errors
+        if: failure()
+        run: |
+          if [ -f build.log ] && [ -s build.log ]; then
+            while IFS= read -r line; do
+              echo "::error file=build.sh::$line"
+            done < build.log
+          fi
+
       - name: List ISO output
         run: |
           ls -lh out/*.iso 2>/dev/null || echo "No ISO found"
