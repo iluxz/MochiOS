@@ -19,4 +19,7 @@ build() {
 package() {
   cd "$srcdir"
   install -Dm755 mochi "$pkgdir/usr/bin/mochi"
+  for cmd in beat install remove uninstall rm update upgrade search status deploy rollback snapshot run help; do
+    ln -s /usr/bin/mochi "$pkgdir/usr/bin/$cmd"
+  done
 }

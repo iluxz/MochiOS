@@ -29,6 +29,10 @@ privkey.pem
 /tmp/
 *.tmp
 
+# Installer
+mochi-setup.exe
+mochi/mochi.exe
+
 # Generated tarballs (CI regenerates)
 pkgbuilds/mochi/*.tar.gz
 pkgbuilds/mochiinstall/*.tar.gz

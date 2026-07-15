@@ -4,9 +4,40 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
 )
 
+var subcommands = []string{
+	"beat", "install",
+	"remove", "uninstall", "rm",
+	"update", "upgrade",
+	"search",
+	"status",
+	"deploy",
+	"rollback",
+	"snapshot",
+	"run",
+	"help",
+}
+
+func isWindows() bool {
+	return runtime.GOOS == "windows"
+}
+
 func Execute() error {
+	exe := strings.TrimSuffix(strings.ToLower(filepath.Base(os.Args[0])), ".exe")
+	if exe != "mochi" {
+		for _, sc := range subcommands {
+			if exe == sc {
+				fmt.Fprintf(os.Stderr, "🍡 use 'mochi %s' instead!\n", sc)
+				os.Args = append([]string{os.Args[0], sc}, os.Args[1:]...)
+				break
+			}
+		}
+	}
+
 	if len(os.Args) < 2 {
 		printUsage()
 		return nil
@@ -43,18 +74,18 @@ func Execute() error {
 }
 
 func printUsage() {
-	fmt.Println(`mochi - the mochios package manager
+	fmt.Println(`mochi - the mochios package manager (windows/mochios)
 
 usage:
   mochi beat <pkg>     install a package (also: mochi install)
   mochi remove <pkg>   remove a package
-  mochi update         atomic update (abroot deploy)
+  mochi update         atomic update or winget upgrade --all
   mochi search <q>     search for a package
-  mochi status         show abroot partition status
-  mochi deploy <pkgs>  deploy update to inactive root
-  mochi rollback       rollback to previous snapshot
-  mochi snapshot       list snapshots
-  mochi run <file>     run a .mochi script
+  mochi status         show system status
+  mochi deploy <pkgs>  mochios only: deploy to inactive root
+  mochi rollback       mochios only: rollback snapshot
+  mochi snapshot       mochios only: list snapshots
+  mochi run <file>     run scripts in any supported language
   mochi help           show this help`)
 }
 

@@ -3,6 +3,9 @@ package cmd
 import "fmt"
 
 func statusCmd(args []string) error {
+	if isWindows() {
+		return run("cmd", "/c", "ver")
+	}
 	if hasAbroot() {
 		fmt.Println("abroot status:")
 		return runAbroot("status")

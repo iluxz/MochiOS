@@ -514,15 +514,29 @@ func (p *Parser) parseWhile() (Node, error) {
 
 func (p *Parser) parseFunction() (Node, error) {
 	p.advance()
-
-	nameTok := p.advance()
-	if nameTok.Type != IDENTIFIER {
-		return nil, &ParseError{Token: nameTok, Msg: "expected function name"}
+	if _, err := p.expect(IDENTIFIER); err != nil {
+		return nil, err
 	}
+	nameTok := p.tokens[p.pos-1]
 
 	var args []string
-	for p.peek().Type == IDENTIFIER {
-		args = append(args, p.advance().Literal)
+	if p.peek().Type == LPAREN {
+		p.advance()
+		for p.peek().Type != RPAREN && p.peek().Type != EOF {
+			if p.peek().Type == IDENTIFIER {
+				args = append(args, p.advance().Literal)
+			}
+			if p.peek().Type == COMMA {
+				p.advance()
+			}
+		}
+		if _, err := p.expect(RPAREN); err != nil {
+			return nil, err
+		}
+	} else {
+		for p.peek().Type == IDENTIFIER {
+			args = append(args, p.advance().Literal)
+		}
 	}
 
 	body, err := p.parseBlock()
