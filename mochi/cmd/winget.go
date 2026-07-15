@@ -20,6 +20,8 @@ var wingetNoise = []string{
 	"terms",
 	"eula",
 	"third.party",
+	" winget",
+	"msstore",
 }
 
 func runWinget(args ...string) error {
