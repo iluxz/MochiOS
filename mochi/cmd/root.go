@@ -32,6 +32,8 @@ func Execute() error {
 		return rollback(args)
 	case "snapshot":
 		return snapshot(args)
+	case "run":
+		return runFile(args)
 	case "help", "--help", "-h":
 		printUsage()
 		return nil
@@ -52,6 +54,7 @@ usage:
   mochi deploy <pkgs>  deploy update to inactive root
   mochi rollback       rollback to previous snapshot
   mochi snapshot       list snapshots
+  mochi run <file>     run a .mochi script
   mochi help           show this help`)
 }
 
