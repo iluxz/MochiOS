@@ -274,7 +274,7 @@ class GuidedScreen(Screen):
         else:
             preselected = self.config.get("disk", "")
             kids += [
-                SelectionList(*[(d, v, v == preselected) for d, v in disks], id="disk_list", max_selected=1),
+                SelectionList(*[(d, v, v == preselected) for d, v in disks], id="disk_list"),
             ]
             self._nav(next_label="next")
         self.body.mount(self._wrap(*kids))

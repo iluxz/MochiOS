@@ -195,7 +195,7 @@ class GuidedScreen(Screen):
         else:
             preselected = self.config.get("disk", "")
             children += [
-                SelectionList(*[(d, v, v == preselected) for d, v in disks], id="disk_list", max_selected=1),
+                SelectionList(*[(d, v, v == preselected) for d, v in disks], id="disk_list"),
                 Horizontal(Button("back", id="back"), Button("next", id="next", variant="primary"), Button("refresh", id="refresh")),
             ]
         self.content.mount(Vertical(*children))

@@ -79,6 +79,24 @@ if [ "$NIGHTLY" = "true" ]; then
   echo "==> stamping nightly marker..."
   sed -i 's/^MOCHIOS_BUILD_ID=.*$/MOCHIOS_BUILD_ID="nightly"/' "$ISO_DIR/airootfs/etc/mochios-release"
   sed -i 's/^MOCHIOS_VERSION=.*$/MOCHIOS_VERSION="0.1.0-nightly"/' "$ISO_DIR/airootfs/etc/mochios-release"
+
+  echo "==> setting dark mode for nightly..."
+  sed -i 's/mochi-wallpaper light/mochi-wallpaper dark/' "$ISO_DIR/airootfs/home/mochi/.config/autostart/mochi-wallpaper.desktop"
+
+  mkdir -p "$ISO_DIR/airootfs/home/mochi/.config"
+  cat > "$ISO_DIR/airootfs/home/mochi/.config/kdeglobals" << 'KDE_GLOBALS'
+[General]
+ColorScheme=mochios-nightly
+
+[KDE]
+ColorScheme=mochios-nightly
+
+[Icons]
+Theme=breeze-dark
+
+[UiSettings]
+ColorScheme=mochios-nightly
+KDE_GLOBALS
 fi
 
 echo "==> rebuilding mochi-abroot pkg..."
