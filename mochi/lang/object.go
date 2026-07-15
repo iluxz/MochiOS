@@ -19,7 +19,7 @@ type Object struct {
 	Type ObjectType
 
 	Number  float64
-	String  string
+	Value   string
 	Bool    bool
 	Elements []Object
 	Params  []string
@@ -66,7 +66,7 @@ func (o Object) String() string {
 		}
 		return fmt.Sprintf("%g", o.Number)
 	case STRING_OBJ:
-		return o.String
+		return o.Value
 	case BOOL_OBJ:
 		if o.Bool {
 			return "true"
@@ -79,7 +79,7 @@ func (o Object) String() string {
 		}
 		return "[" + join(elems, ", ") + "]"
 	case FUNCTION_OBJ:
-		return fmt.Sprintf("<function %s>", o.String)
+		return fmt.Sprintf("<function %s>", o.Value)
 	case BUILTIN_OBJ:
 		return "<builtin>"
 	case RETURN_OBJ:

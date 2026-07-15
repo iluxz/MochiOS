@@ -42,7 +42,7 @@ func Eval(node Node, env *Environment) (Object, error) {
 	case *NumberLiteral:
 		return Object{Type: NUMBER_OBJ, Number: n.Value}, nil
 	case *StringLiteral:
-		return Object{Type: STRING_OBJ, String: n.Value}, nil
+		return Object{Type: STRING_OBJ, Value: n.Value}, nil
 	case *BoolLiteral:
 		return Object{Type: BOOL_OBJ, Bool: n.Value}, nil
 	case *NilLiteral:
@@ -50,7 +50,7 @@ func Eval(node Node, env *Environment) (Object, error) {
 	case *ListLiteral:
 		return evalList(n, env)
 	}
-	return nil, &EvalError{Msg: fmt.Sprintf("unknown node: %T", node)}
+	return Object{}, &EvalError{Msg: fmt.Sprintf("unknown node: %T", node)}
 }
 
 func NewEvalEnv() *Environment {
@@ -260,7 +260,7 @@ func evalInfix(expr *InfixExpr, env *Environment) (Object, error) {
 	case left.Type == NUMBER_OBJ && right.Type == NUMBER_OBJ:
 		return evalNumberInfix(expr.Operator, left, right)
 	case expr.Operator == "+" && left.Type == STRING_OBJ:
-		return Object{Type: STRING_OBJ, String: left.String + right.String()}, nil
+		return Object{Type: STRING_OBJ, Value: left.Value + right.String()}, nil
 	case expr.Operator == "==":
 		return Object{Type: BOOL_OBJ, Bool: objectsEqual(left, right)}, nil
 	case expr.Operator == "!=":
@@ -365,7 +365,7 @@ func isTruthy(obj Object) bool {
 	case NUMBER_OBJ:
 		return obj.Number != 0
 	case STRING_OBJ:
-		return obj.String != ""
+		return obj.Value != ""
 	default:
 		return true
 	}
@@ -383,7 +383,7 @@ func objectsEqual(a, b Object) bool {
 	case NUMBER_OBJ:
 		return a.Number == b.Number
 	case STRING_OBJ:
-		return a.String == b.String
+		return a.Value == b.Value
 	case LIST_OBJ:
 		if len(a.Elements) != len(b.Elements) {
 			return false
