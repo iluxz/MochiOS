@@ -31,6 +31,8 @@ jobs:
         run: |
           chown -R builder:builder "$PWD"
           cd pkgbuilds/mochi
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochi-$pkgver.tar.gz" -C "$PWD/../../mochi" .
           export GOTOOLCHAIN=local
           sudo -u builder makepkg -cf --noconfirm --nodeps
 
