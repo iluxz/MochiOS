@@ -1,6 +1,16 @@
 name: Public Repo
 
 on:
+  push:
+    paths:
+      - "pkgbuilds/mochi/**"
+      - "mochi/**"
+      - "pkgbuilds/mochiinstall/**"
+      - "mochiinstall_wrapper"
+      - "installer.py"
+      - "mochiinstall_app.py"
+      - "mochi_ascii.py"
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,12 +30,20 @@ jobs:
         run: |
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Sy --noconfirm archiso base-devel go zstd git
+          pacman -Sy --noconfirm base-devel go python python-textual zstd git fakeroot
 
       - name: Create builder
         run: |
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+      - name: GPG key
+        run: |
+          mkdir -p /home/builder/.gnupg
+          chmod 700 /home/builder/.gnupg
+          printf 'Key-Type: RSA\nKey-Length: 4096\nSubkey-Type: RSA\nSubkey-Length: 4096\nName-Real: MochiOS\nName-Email: repo@mochios.dev\nExpire-Date: 0\n%%no-protection\n%%commit\n' | gpg --homedir /home/builder/.gnupg --batch --gen-key
+          mkdir -p /repo/pubkey
+          gpg --homedir /home/builder/.gnupg --export --armor repo@mochios.dev > /repo/pubkey/mochios-key.pub
 
       - name: Build mochi
         run: |
@@ -36,23 +54,93 @@ jobs:
           export GOTOOLCHAIN=local
           sudo -u builder makepkg -cf --noconfirm --nodeps
 
-      - name: Deploy
+      - name: Build mochiinstall
         run: |
-          pkgfile="$(ls pkgbuilds/mochi/mochi-*.pkg.tar.zst | grep -v debug | head -1)"
-          cp "$pkgfile" /tmp/
-          cd /tmp
-          tar -I zstd -xf "$(basename "$pkgfile")"
-          mkdir -p /repo/os/x86_64
-          cp "$(basename "$pkgfile")" /repo/os/x86_64/
-          cp usr/bin/mochi /repo/
-          chmod +x /repo/mochi
+          cd pkgbuilds/mochiinstall
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochiinstall-$pkgver.tar.gz" \
+            -C "$PWD/../.." \
+            mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py
+          sudo -u builder makepkg -cf --noconfirm --nodeps
 
+      - name: Create repo
+        run: |
+          mkdir -p /repo/os/x86_64
+          for f in pkgbuilds/mochi/mochi-*.pkg.tar.zst pkgbuilds/mochiinstall/mochiinstall-*.pkg.tar.zst; do
+            [ -f "$f" ] || continue
+            cp "$f" /repo/os/x86_64/
+          done
+          cp /repo/pubkey/mochios-key.pub /repo/os/x86_64/
+
+      - name: Sign packages + repo-add
+        run: |
+          cd /repo/os/x86_64
+          for pkg in *.pkg.tar.zst; do
+            gpg --homedir /home/builder/.gnupg \
+              --batch --no-tty --pinentry-mode=loopback --passphrase "" \
+              --detach-sign "$pkg" 2>/dev/null || true
+          done
+          repo-add --sign mochi.db.tar.zst *.pkg.tar.zst
+
+      - name: Static binary
+        run: |
+          mkdir -p /repo/static /tmp/mochi-extract
+          cd /repo/os/x86_64
+          pkgfile="$(ls mochi-*.pkg.tar.zst | grep -v debug | head -1)"
+          tar -I zstd -xf "$pkgfile" -C /tmp/mochi-extract
+          cp /tmp/mochi-extract/usr/bin/mochi /repo/static/mochi
+          chmod +x /repo/static/mochi
+
+      - name: Install script
+        run: |
+          cat > /repo/install.sh << 'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+REPO_URL="https://iluxz.github.io/MochiOS/repo"
+echo "==> mochios public repo"
+echo ""
+if command -v pacman &>/dev/null; then
+  echo "detected arch-based system - adding pacman repo..."
+  if grep -q '\[mochi\]' /etc/pacman.conf 2>/dev/null; then
+    echo "  repo already configured"
+  else
+    cat >> /etc/pacman.conf << 'PACMAN'
+
+[mochi]
+SigLevel = Optional
+Server = https://iluxz.github.io/MochiOS/repo/os/x86_64
+PACMAN
+    echo "  added [mochi] to /etc/pacman.conf"
+  fi
+  pacman -Sy --noconfirm mochi 2>/dev/null && echo "  mochi installed!" || {
+    echo "  error: could not install mochi"
+    exit 1
+  }
+else
+  echo "downloading static binary..."
+  if [ -w /usr/local/bin ]; then
+    INSTALL_DIR=/usr/local/bin
+  else
+    INSTALL_DIR="$HOME/.local/bin"
+    mkdir -p "$INSTALL_DIR"
+  fi
+  curl -sSfL "$REPO_URL/static/mochi" -o "$INSTALL_DIR/mochi"
+  chmod +x "$INSTALL_DIR/mochi"
+  echo "  installed mochi to $INSTALL_DIR/mochi"
+fi
+echo ""
+echo "run 'mochi help' to get started"
+SCRIPT
+          chmod +x /repo/install.sh
+
+      - name: Deploy to gh-pages
+        run: |
           cd /repo
           git init
           git config user.name "bot"
           git config user.email "bot@mochios.dev"
           git checkout -b gh-pages
           git add -A
-          git commit -m "update"
+          git commit -m "repo: update packages [ci skip]"
           git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push -f origin gh-pages
