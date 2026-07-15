@@ -33,7 +33,7 @@ jobs:
             sudo \
             go \
             python \
-            python-urwid \
+            python-textual \
             squashfs-tools \
             dosfstools \
             mtools \

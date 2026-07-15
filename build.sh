@@ -17,6 +17,7 @@ WORK_DIR="${WORK_DIR:-/home/mochi/mochios-work}"
 SIGN_KEY="${SIGN_KEY:-signing@mochios.dev}"
 GNUPGHOME="${GNUPGHOME:-/home/mochi/.mochios-gnupg}"
 GNUPG() { gpg --homedir "$GNUPGHOME" "$@"; }
+NIGHTLY="${NIGHTLY:-false}"
 
 sign_pkg() {
   local pkg="$1"
@@ -64,6 +65,22 @@ tar czf "mochios-branding-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochios-bra
 sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochios-branding"/mochios-branding-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
+if [ "$NIGHTLY" = "true" ]; then
+  echo "==> rebuilding mochios-branding-nightly pkg..."
+  cd "$MOCHIOS_DIR/pkgbuilds/mochios-branding-nightly"
+  pkgver=$(_get_pkgver PKGBUILD)
+  tar czf "mochios-branding-nightly-$pkgver.tar.gz" -C "$MOCHIOS_DIR/pkgbuilds/mochios-branding-nightly" --exclude="mochios-branding-nightly-$pkgver.tar.gz" usr etc
+  sudo -u mochi makepkg -cf --noconfirm --nodeps
+  cp "$MOCHIOS_DIR/pkgbuilds/mochios-branding-nightly"/mochios-branding-nightly-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
+  echo "==> switching sddm theme to mochios-nightly..."
+  printf '[Theme]\nCurrent=mochios-nightly\n' > "$ISO_DIR/airootfs/etc/sddm.conf.d/mochios.conf"
+
+  echo "==> stamping nightly marker..."
+  sed -i 's/^MOCHIOS_BUILD_ID=.*$/MOCHIOS_BUILD_ID="nightly"/' "$ISO_DIR/airootfs/etc/mochios-release"
+  sed -i 's/^MOCHIOS_VERSION=.*$/MOCHIOS_VERSION="0.1.0-nightly"/' "$ISO_DIR/airootfs/etc/mochios-release"
+fi
+
 echo "==> rebuilding mochi-abroot pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochi-abroot"
 pkgver=$(_get_pkgver PKGBUILD)
@@ -89,6 +106,7 @@ for pattern in \
   "$REPO_DIR/os/x86_64/"mochiinstall-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochios-defaults-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochios-branding-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"mochios-branding-nightly-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochi-abroot-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"zen-browser-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"sober-[0-9]*.pkg.tar.zst; do
@@ -105,6 +123,7 @@ GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/moch
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochiinstall-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-defaults-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-branding-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-branding-nightly-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochi-abroot-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/zen-browser-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/sober-[0-9]*.pkg.tar.zst
@@ -119,7 +138,12 @@ fi
 
 echo "==> staging mochi packages for installer..."
 mkdir -p "$ISO_DIR/airootfs/opt/mochi-pkgs"
-for pkg in mochi mochiinstall mochios-defaults mochios-branding mochi-abroot zen-browser sober; do
+if [ "$NIGHTLY" = "true" ]; then
+  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding-nightly mochi-abroot zen-browser sober"
+else
+  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding mochi-abroot zen-browser sober"
+fi
+for pkg in $STAGED_PKGS; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
 done
 
@@ -139,6 +163,10 @@ if [ -f "$SB_KEY_SRC/db.key" ] && [ -f "$SB_KEY_SRC/db.crt" ]; then
 else
   echo "  [yellow]secure boot keys not found, sbctl will generate on first boot[/]"
 fi
+
+echo "==> setting up systemd for live session..."
+ln -sf /usr/lib/systemd/system/sddm.service "$ISO_DIR/airootfs/etc/systemd/system/display-manager.service"
+ln -sf /usr/lib/systemd/system/sddm.service "$ISO_DIR/airootfs/etc/systemd/system/graphical.target.wants/display-manager.service"
 
 echo "==> building iso..."
 mkdir -p "$OUT_DIR"

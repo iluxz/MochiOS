@@ -57,6 +57,7 @@ jobs:
           WORK_DIR=/tmp/mochios-work \
           GNUPGHOME=/home/mochi/.mochios-gnupg \
           SIGN_KEY=ci@mochios.dev \
+          NIGHTLY=true \
           bash /tmp/mochios/build.sh 2>&1
 
       - name: upload iso

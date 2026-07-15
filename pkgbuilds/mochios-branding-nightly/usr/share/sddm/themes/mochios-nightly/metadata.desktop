@@ -1,0 +1,6 @@
+[SddmTheme]
+Name=mochios-nightly
+Name[en]=mochios-nightly
+Comment=mochios Nightly SDDM login theme
+Type=X-SDDM-Theme
+Version=0.1.0

@@ -33,7 +33,7 @@ xdg-utils
 git
 go
 python
-python-urwid
+python-textual
 plasma-desktop
 plasma-nm
 plasma-pa

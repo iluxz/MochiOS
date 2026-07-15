@@ -37,6 +37,7 @@ pkgbuilds/mochiinstall/*.tar.gz
 pkgbuilds/mochi-abroot/*.tar.gz
 pkgbuilds/mochios-defaults/*.tar.gz
 pkgbuilds/mochios-branding/*.tar.gz
+pkgbuilds/mochios-branding-nightly/*.tar.gz
 __pycache__/
 pkgbuilds/sober/*.tar.gz
 pkgbuilds/zen-browser/*.tar.gz

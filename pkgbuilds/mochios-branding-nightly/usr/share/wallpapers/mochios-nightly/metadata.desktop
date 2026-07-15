@@ -1,0 +1,9 @@
+[Wallpaper]
+Name=mochios-nightly
+DefaultFile=1920x1080.png
+
+[Wallpaper1920x1080-dark.png]
+Name=Dark Nightly
+
+[Wallpaper1920x1080.png]
+Name=Light Nightly

@@ -1,0 +1,35 @@
+# Maintainer: mochios team
+pkgname=mochios-branding-nightly
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="mochios Nightly KDE Plasma branding and themes"
+arch=('any')
+url="https://mochios.dev"
+license=('GPL3')
+depends=('mochios-branding')
+conflicts=('mochios-branding')
+provides=('mochios-branding')
+source=("mochios-branding-nightly-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir"
+
+  install -dm755 "$pkgdir/usr/share/sddm/themes"
+  cp -r --no-preserve=ownership usr/share/sddm/themes/mochios-nightly "$pkgdir/usr/share/sddm/themes/"
+
+  install -dm755 "$pkgdir/usr/share/color-schemes"
+  cp --no-preserve=ownership usr/share/color-schemes/mochios-nightly.colors "$pkgdir/usr/share/color-schemes/"
+
+  install -dm755 "$pkgdir/usr/share/wallpapers"
+  cp -r --no-preserve=ownership usr/share/wallpapers/mochios-nightly "$pkgdir/usr/share/wallpapers/"
+
+  ln -sf ../../mochios/contents/images/1920x1080.png "$pkgdir/usr/share/wallpapers/mochios-nightly/contents/images/1920x1080.png"
+  ln -sf ../../mochios/contents/images/1920x1080-dark.png "$pkgdir/usr/share/wallpapers/mochios-nightly/contents/images/1920x1080-dark.png"
+
+  install -dm755 "$pkgdir/etc/conky"
+  cp --no-preserve=ownership etc/conky/mochios-nightly.conf "$pkgdir/etc/conky/"
+
+  install -dm755 "$pkgdir/etc/xdg/autostart"
+  cp --no-preserve=ownership etc/xdg/autostart/mochi-nightly-watermark.desktop "$pkgdir/etc/xdg/autostart/"
+}

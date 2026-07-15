@@ -186,7 +186,8 @@ def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extr
         "kde": ["plasma-desktop", "plasma-workspace", "kdeplasma-addons",
                 "kwin", "konsole", "dolphin", "kate", "gwenview",
                 "sddm", "kwallet-pam", "breeze", "breeze-gtk",
-                "kpipewire", "networkmanager", "plasma-nm"],
+                "pipewire", "pipewire-pulse", "wireplumber", "kpipewire",
+                "plasma-nm"],
         "gnome": ["gnome", "gnome-extra", "gdm"],
         "none": [],
     }
@@ -266,6 +267,7 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     dm = "sddm" if de == "kde" else "gdm" if de == "gnome" else None
     if dm:
         ch(["systemctl", "enable", dm])
+        ch(["systemctl", "set-default", "graphical.target"])
 
     lfn("importing mochios signing key...")
     key_src = "/usr/share/mochios/mochios-key.pub"
