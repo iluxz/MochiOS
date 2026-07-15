@@ -86,5 +86,18 @@ jobs:
           cd /tmp/iso
           iso=$(ls *.iso 2>/dev/null | head -1)
           if [ -z "$iso" ]; then echo "no iso found"; exit 1; fi
-          gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
-          gh release create "$RELEASE_TAG" "$iso" --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+
+          size=$(stat -c%s "$iso")
+          limit=2147483648
+          echo "iso size: $size bytes ($(( size / 1024 / 1024 )) MB)"
+
+          if [ "$size" -ge "$limit" ]; then
+            echo "iso too large for github release ($size >= $limit), splitting..."
+            split -b 2000M "$iso" "${iso}.part."
+            rm -f "$iso"
+            gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
+            gh release create "$RELEASE_TAG" "${iso}.part."* --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+          else
+            gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
+            gh release create "$RELEASE_TAG" "$iso" --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+          fi
