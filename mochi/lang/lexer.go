@@ -25,14 +25,15 @@ func Lex(input string) []Token {
 	var tokens []Token
 	for {
 		tok := l.nextToken()
-		tokens = append(tokens, tok)
 		if tok.Type == EOF {
+			for len(l.indentStack) > 1 {
+				l.indentStack = l.indentStack[:len(l.indentStack)-1]
+				tokens = append(tokens, Token{Type: DEDENT, Line: l.line, Col: l.col})
+			}
+			tokens = append(tokens, tok)
 			break
 		}
-	}
-	for len(l.indentStack) > 1 {
-		tokens = append(tokens, Token{Type: DEDENT, Line: l.line, Col: l.col})
-		l.indentStack = l.indentStack[:len(l.indentStack)-1]
+		tokens = append(tokens, tok)
 	}
 	return tokens
 }
@@ -44,37 +45,48 @@ func (l *Lexer) nextToken() Token {
 		return tok
 	}
 
-	l.skipWhitespace()
+	if l.atLineStart {
+		l.atLineStart = false
+		indent := l.countAndSkipIndent()
+		last := l.indentStack[len(l.indentStack)-1]
+
+		if l.pos >= len(l.input) {
+			if indent < last {
+				return l.emitDedent()
+			}
+			return Token{Type: EOF, Line: l.line, Col: l.col}
+		}
+
+		ch := l.input[l.pos]
+		if ch == '#' {
+			l.skipLine()
+			l.atLineStart = true
+			return l.nextToken()
+		}
+		if ch == '\n' {
+			l.pos++
+			l.line++
+			l.col = 0
+			l.atLineStart = true
+			return Token{Type: NEWLINE, Literal: "\\n", Line: l.line - 1, Col: l.col}
+		}
+
+		if indent > last {
+			l.indentStack = append(l.indentStack, indent)
+			return Token{Type: INDENT, Line: l.line, Col: l.col}
+		}
+		if indent < last {
+			return l.emitDedent()
+		}
+	} else {
+		l.skipInlineSpace()
+	}
 
 	if l.pos >= len(l.input) {
-		return Token{Type: EOF, Literal: "", Line: l.line, Col: l.col}
+		return Token{Type: EOF, Line: l.line, Col: l.col}
 	}
 
 	ch := l.input[l.pos]
-
-	if l.atLineStart {
-		l.atLineStart = false
-		indent := l.countIndent()
-		last := l.indentStack[len(l.indentStack)-1]
-		if ch == '#' || ch == '\n' || l.pos >= len(l.input) {
-			l.skipLine()
-			return l.nextToken()
-		}
-		if indent > last {
-			l.indentStack = append(l.indentStack, indent)
-			return Token{Type: INDENT, Literal: "", Line: l.line, Col: l.col}
-		} else if indent < last {
-			for len(l.indentStack) > 1 && l.indentStack[len(l.indentStack)-1] != indent {
-				l.indentStack = l.indentStack[:len(l.indentStack)-1]
-				l.pending = append(l.pending, Token{Type: DEDENT, Line: l.line, Col: l.col})
-			}
-			if len(l.indentStack) > 1 && l.indentStack[len(l.indentStack)-1] > indent {
-				l.indentStack = l.indentStack[:len(l.indentStack)-1]
-				l.pending = append(l.pending, Token{Type: DEDENT, Line: l.line, Col: l.col})
-			}
-			return l.nextToken()
-		}
-	}
 
 	switch {
 	case ch == '\n':
@@ -83,10 +95,6 @@ func (l *Lexer) nextToken() Token {
 		l.col = 0
 		l.atLineStart = true
 		return Token{Type: NEWLINE, Literal: "\\n", Line: l.line - 1, Col: l.col}
-
-	case ch == '#':
-		l.skipLine()
-		return l.nextToken()
 
 	case ch == '=':
 		l.pos++
@@ -182,15 +190,40 @@ func (l *Lexer) nextToken() Token {
 	}
 }
 
-func (l *Lexer) skipWhitespace() {
+func (l *Lexer) emitDedent() Token {
+	for len(l.indentStack) > 1 {
+		l.indentStack = l.indentStack[:len(l.indentStack)-1]
+		l.pending = append(l.pending, Token{Type: DEDENT, Line: l.line, Col: l.col})
+	}
+	if len(l.pending) > 0 {
+		tok := l.pending[0]
+		l.pending = l.pending[1:]
+		return tok
+	}
+	return Token{Type: DEDENT, Line: l.line, Col: l.col}
+}
+
+func (l *Lexer) countAndSkipIndent() int {
+	count := 0
 	for l.pos < len(l.input) {
 		ch := l.input[l.pos]
-		if ch == ' ' || ch == '\t' || ch == '\r' {
+		if ch == ' ' {
+			count++
 			l.pos++
-			l.col++
+		} else if ch == '\t' {
+			count += 4
+			l.pos++
 		} else {
 			break
 		}
+	}
+	return count
+}
+
+func (l *Lexer) skipInlineSpace() {
+	for l.pos < len(l.input) && (l.input[l.pos] == ' ' || l.input[l.pos] == '\t') {
+		l.pos++
+		l.col++
 	}
 }
 
@@ -198,24 +231,6 @@ func (l *Lexer) skipLine() {
 	for l.pos < len(l.input) && l.input[l.pos] != '\n' {
 		l.pos++
 	}
-}
-
-func (l *Lexer) countIndent() int {
-	pos := l.pos
-	count := 0
-	for pos < len(l.input) {
-		ch := l.input[pos]
-		if ch == ' ' {
-			count++
-			pos++
-		} else if ch == '\t' {
-			count += 4
-			pos++
-		} else {
-			break
-		}
-	}
-	return count
 }
 
 func (l *Lexer) readString(quote rune) Token {
@@ -245,14 +260,9 @@ func (l *Lexer) readString(quote rune) Token {
 
 func (l *Lexer) readNumber() Token {
 	start := l.pos
-	hasDot := false
 	for l.pos < len(l.input) {
 		ch := l.input[l.pos]
-		if ch == '.' && !hasDot {
-			hasDot = true
-			l.pos++
-			l.col++
-		} else if unicode.IsDigit(ch) {
+		if unicode.IsDigit(ch) || ch == '.' {
 			l.pos++
 			l.col++
 		} else {
