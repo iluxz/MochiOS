@@ -1,0 +1,105 @@
+name: Public Repo
+
+on:
+  push:
+    paths:
+      - "pkgbuilds/mochi/**"
+      - "mochi/**"
+      - "pkgbuilds/mochiinstall/**"
+      - "installer.py"
+      - "mochiinstall_app.py"
+      - "mochi_ascii.py"
+      - "mochiinstall_wrapper"
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Arch Linux
+        run: |
+          pacman-key --init
+          pacman-key --populate archlinux
+          echo "Server = https://mirror.rackspace.com/archlinux/\$repo/os/\$arch" > /etc/pacman.d/mirrorlist
+          pacman -Sy --noconfirm
+
+      - name: Install build dependencies
+        run: |
+          pacman -S --needed --noconfirm \
+            base-devel \
+            go \
+            python \
+            python-textual \
+            fakeroot \
+            debugedit \
+            zstd
+
+      - name: Create builder user
+        run: |
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+      - name: Create GPG signing key
+        run: |
+          mkdir -p /home/builder/.gnupg
+          chmod 700 /home/builder/.gnupg
+          printf 'Key-Type: RSA\nKey-Length: 4096\nSubkey-Type: RSA\nSubkey-Length: 4096\nName-Real: MochiOS Repo\nName-Email: repo@mochios.dev\nExpire-Date: 0\n%%no-protection\n%%commit\n' | gpg --homedir /home/builder/.gnupg --batch --gen-key
+          mkdir -p /repo/pubkey
+          gpg --homedir /home/builder/.gnupg --export --armor repo@mochios.dev > /repo/pubkey/mochios-key.pub
+
+      - name: Build mochi CLI
+        run: |
+          chown -R builder:builder "$PWD"
+          cd pkgbuilds/mochi
+          export GOTOOLCHAIN=local
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Build mochiinstall
+        run: |
+          cd pkgbuilds/mochiinstall
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochiinstall-$pkgver.tar.gz" \
+            -C "$PWD/../.." \
+            mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Set up repo
+        run: |
+          mkdir -p /repo/os/x86_64
+          cp pkgbuilds/mochi/mochi-*.pkg.tar.zst /repo/os/x86_64/
+          cp pkgbuilds/mochiinstall/mochiinstall-*.pkg.tar.zst /repo/os/x86_64/
+          cp /repo/pubkey/mochios-key.pub /repo/os/x86_64/
+
+          cd /repo/os/x86_64
+          for pkg in *.pkg.tar.zst; do
+            gpg --homedir /home/builder/.gnupg \
+              --batch --no-tty --pinentry-mode=loopback --passphrase "" \
+              --detach-sign "$pkg" 2>/dev/null || true
+          done
+
+          repo-add --sign mochi.db.tar.zst *.pkg.tar.zst
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: /repo
+          destination_dir: repo
+          keep_files: false
