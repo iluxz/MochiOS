@@ -20,7 +20,7 @@ var wingetNoise = []string{
 	"terms",
 	"eula",
 	"third.party",
-	" winget",
+	"winget",
 	"msstore",
 }
 

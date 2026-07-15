@@ -11,7 +11,7 @@ func remove(args []string) error {
 		for _, pkg := range args {
 			fmt.Printf("removing %s... ", pkg)
 		}
-		err := runWinget(append([]string{"uninstall"}, args...)...)
+		err := runWinget(append([]string{"uninstall", "--disable-interactivity"}, args...)...)
 		if err != nil {
 			fmt.Println("failed")
 			return err

@@ -21,7 +21,7 @@ func search(args []string) error {
 }
 
 func searchWinget(query string) error {
-	c := exec.Command("winget", "search", query)
+	c := exec.Command("winget", "search", "--accept-source-agreements", query)
 	var outBuf, errBuf bytes.Buffer
 	c.Stdout = &outBuf
 	c.Stderr = &errBuf
