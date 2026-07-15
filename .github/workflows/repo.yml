@@ -38,11 +38,12 @@ jobs:
 
       - name: Deploy
         run: |
-          cp pkgbuilds/mochi/mochi-*.pkg.tar.zst /tmp/
+          pkgfile="$(ls pkgbuilds/mochi/mochi-*.pkg.tar.zst | grep -v debug | head -1)"
+          cp "$pkgfile" /tmp/
           cd /tmp
-          tar -I zstd -xf mochi-*.pkg.tar.zst
+          tar -I zstd -xf "$(basename "$pkgfile")"
           mkdir -p /repo/os/x86_64
-          cp mochi-*.pkg.tar.zst /repo/os/x86_64/
+          cp "$(basename "$pkgfile")" /repo/os/x86_64/
           cp usr/bin/mochi /repo/
           chmod +x /repo/mochi
 

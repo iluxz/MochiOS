@@ -6,6 +6,7 @@ pkgdesc="MochiOS package manager"
 arch=("x86_64")
 url="https://mochios.dev"
 license=("GPL3")
+options=("!debug" "!strip")
 depends=("pacman")
 makedepends=("go")
 source=("mochi-$pkgver.tar.gz")
