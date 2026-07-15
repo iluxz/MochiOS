@@ -167,6 +167,7 @@ else
 fi
 
 echo "==> setting up systemd for live session..."
+mkdir -p "$ISO_DIR/airootfs/etc/systemd/system/graphical.target.wants"
 ln -sf /usr/lib/systemd/system/sddm.service "$ISO_DIR/airootfs/etc/systemd/system/display-manager.service"
 ln -sf /usr/lib/systemd/system/sddm.service "$ISO_DIR/airootfs/etc/systemd/system/graphical.target.wants/display-manager.service"
 
