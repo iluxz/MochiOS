@@ -1,0 +1,69 @@
+name: build iso
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux/archlinux:latest
+    steps:
+      - name: install deps
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm archiso base-devel go git sudo fakeroot
+
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          path: /tmp/mochios
+
+      - name: setup build user
+        run: |
+          useradd -m mochi
+          echo "mochi ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown -R mochi:mochi /tmp/mochios
+          mkdir -p /home/mochi/.mochios-gnupg
+          chown -R mochi:mochi /home/mochi
+
+      - name: create signing key
+        run: |
+          mkdir -p /tmp/mochios/repo/pubkey
+          cd /tmp/mochios
+          cat > ci-genkey << 'GPGEOF'
+            Key-Type: ed25519
+            Key-Usage: sign
+            Name-Real: MochiOS CI
+            Name-Email: ci@mochios.dev
+            Expire-Date: 0
+            %no-protection
+          GPGEOF
+          gpg --batch --gen-key ci-genkey
+          gpg --export --armor ci@mochios.dev > repo/pubkey/mochios-key.pub
+
+      - name: create secure boot keys
+        run: |
+          mkdir -p /tmp/mochios/secure-boot
+          cd /tmp/mochios/secure-boot
+          openssl req -x509 -newkey rsa:2048 -keyout db.key -out db.crt \
+            -days 365 -nodes -subj "/CN=MochiOS CI/"
+          chmod 600 db.key
+
+      - name: build packages + iso
+        run: |
+          mkdir -p /tmp/mochios-work
+          MOCHIOS_DIR=/tmp/mochios \
+          WORK_DIR=/tmp/mochios-work \
+          GNUPGHOME=/root/.gnupg \
+          SIGN_KEY=ci@mochios.dev \
+          bash /tmp/mochios/build.sh 2>&1
+
+      - name: upload iso
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochios-iso
+          path: /tmp/mochios/out/*.iso
+          retention-days: 30
