@@ -29,6 +29,10 @@ privkey.pem
 /tmp/
 *.tmp
 
+# Local backups
+backups/
+*.bundle
+
 # Installer (not gitignored — committed for distribution)
 
 # Generated tarballs (CI regenerates)

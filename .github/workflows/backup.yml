@@ -1,0 +1,57 @@
+name: Backup
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full repo with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Create git bundle
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          git bundle create "mochios-$DATE.bundle" --all
+
+      - name: Create full tarball
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          tar czf "mochios-$DATE.tar.gz" \
+            --exclude=.git \
+            --transform "s/^\./mochios-$DATE/" .
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochios-bundle
+          path: mochios-*.bundle
+          retention-days: 90
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochios-source
+          path: mochios-*.tar.gz
+          retention-days: 90
+
+      - name: Create backup release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          gh release create "backup-$DATE" \
+            mochios-*.bundle mochios-*.tar.gz \
+            --repo ${{ github.repository }} \
+            --title "Backup $DATE" \
+            --notes "Automated weekly backup of the full repo." \
+            --prerelease
