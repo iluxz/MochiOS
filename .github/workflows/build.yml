@@ -68,6 +68,7 @@ jobs:
           export WORK_DIR="$PWD/work"
           export GNUPGHOME="/home/mochi/.mochios-gnupg"
           export SIGN_KEY="ci@mochios.dev"
+          export GOTOOLCHAIN="local"
           bash build.sh 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
 
       - name: Upload build log
@@ -79,6 +80,14 @@ jobs:
           else
             echo "No build log found or empty"
           fi
+
+      - name: Upload build log as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
 
       - name: List ISO output
         run: |
