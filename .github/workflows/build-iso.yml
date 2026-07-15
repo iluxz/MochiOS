@@ -96,13 +96,21 @@ jobs:
           cp "$GITHUB_WORKSPACE/join-iso.bat" /tmp/iso/ 2>/dev/null || true
           cp "$GITHUB_WORKSPACE/join-iso.sh" /tmp/iso/ 2>/dev/null || true
 
+          # generate checksum for integrity verification
+          sha256sum "$iso" > /tmp/iso/SHA256SUMS.txt
+          echo "" >> /tmp/iso/SHA256SUMS.txt
+
           if [ "$size" -ge "$limit" ]; then
             echo "iso too large for github release ($size >= $limit), splitting..."
             split -b 2000M "$iso" "${iso}.part."
             rm -f "$iso"
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
-            gh release create "$RELEASE_TAG" "${iso}.part."* join-iso.bat join-iso.sh --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+            gh release create "$RELEASE_TAG" \
+              "${iso}.part."* join-iso.bat join-iso.sh SHA256SUMS.txt \
+              --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
           else
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
-            gh release create "$RELEASE_TAG" "$iso" join-iso.bat join-iso.sh --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+            gh release create "$RELEASE_TAG" \
+              "$iso" join-iso.bat join-iso.sh SHA256SUMS.txt \
+              --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
           fi
