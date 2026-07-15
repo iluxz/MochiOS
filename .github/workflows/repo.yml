@@ -20,7 +20,7 @@ jobs:
         run: |
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Sy --noconfirm archiso base-devel go zstd
+          pacman -Sy --noconfirm archiso base-devel go zstd git
 
       - name: Create builder
         run: |
