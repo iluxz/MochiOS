@@ -150,10 +150,14 @@ echo "run 'mochi help' to get started"
 SCRIPT
           chmod +x /repo/install.sh
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: /repo
-          destination_dir: repo
-          keep_files: false
+      - name: Deploy to gh-pages branch
+        run: |
+          cd /repo
+          git init
+          git config user.name "mochios-bot"
+          git config user.email "bot@mochios.dev"
+          git checkout -b gh-pages
+          git add -A
+          git commit -m "repo: update packages [ci skip]"
+          git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git push -f origin gh-pages
