@@ -36,7 +36,8 @@ func selfUpdate(args []string) error {
 	if resp.StatusCode != 200 {
 		tmp.Close()
 		os.Remove(tmpPath)
-		return fmt.Errorf("download failed: http %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("download failed: http %d\nurl: %s\n%s", resp.StatusCode, resp.Request.URL.String(), string(body))
 	}
 
 	_, err = io.Copy(tmp, resp.Body)
@@ -49,14 +50,13 @@ func selfUpdate(args []string) error {
 	fmt.Println("downloaded, replacing...")
 
 	if runtime.GOOS == "windows" {
-		return replaceWindows(exe, tmpPath)
+		replaceWindows(exe, tmpPath)
+		return nil
 	}
 	return replaceUnix(exe, tmpPath)
 }
 
-func replaceWindows(exe, tmp string) error {
-	// Can't replace a running exe on windows, so spawn a .bat that waits
-	// then replaces and cleans up
+func replaceWindows(exe, tmp string) {
 	bat := filepath.Join(os.TempDir(), "mochi-update.bat")
 	batContent := fmt.Sprintf(`@echo off
 :sleep
@@ -69,7 +69,7 @@ copy /y "%s" "%s" >nul
 del "%s"
 `, exe, exe, exe, tmp, exe, tmp)
 	os.WriteFile(bat, []byte(batContent), 0755)
-	return fmt.Errorf("replacement queued — mochi-update.bat in temp dir, run it manually or reboot")
+	fmt.Printf("done! run %s or reboot to finish the update\n", bat)
 }
 
 func replaceUnix(exe, tmp string) error {
