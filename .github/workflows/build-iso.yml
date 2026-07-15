@@ -33,15 +33,7 @@ jobs:
         run: |
           cd /tmp/mochios
           mkdir -p repo/pubkey
-          cat > ci-genkey << 'GPGEOF'
-            Key-Type: ed25519
-            Key-Usage: sign
-            Name-Real: MochiOS CI
-            Name-Email: ci@mochios.dev
-            Expire-Date: 0
-            %no-protection
-          GPGEOF
-          gpg --batch --gen-key ci-genkey
+          printf 'Key-Type: RSA\nKey-Length: 2048\nName-Real: MochiOS CI\nName-Email: ci@mochios.dev\nExpire-Date: 0\n%%no-protection\n' | gpg --batch --gen-key 2>&1
           gpg --export --armor ci@mochios.dev > repo/pubkey/mochios-key.pub
 
       - name: create secure boot keys
