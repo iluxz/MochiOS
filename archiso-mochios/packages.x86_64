@@ -7,6 +7,7 @@ mkinitcpio-archiso
 amd-ucode
 intel-ucode
 btrfs-progs
+gptfdisk
 cryptsetup
 lvm2
 grub
