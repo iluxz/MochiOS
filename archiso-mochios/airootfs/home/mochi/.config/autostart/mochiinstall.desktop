@@ -2,7 +2,7 @@
 Type=Application
 Name=MochiOS Installer
 Comment=Install MochiOS to your system
-Exec=konsole -e mochiinstall
+Exec=mochiinstall
 Terminal=false
 Categories=System;
 X-KDE-autostart-phase=2

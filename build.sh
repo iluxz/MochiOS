@@ -47,7 +47,7 @@ echo "==> rebuilding mochiinstall pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochiinstall"
 pkgver=$(_get_pkgver PKGBUILD)
 tar czf "mochiinstall-$pkgver.tar.gz" -C "$MOCHIOS_DIR" \
-  mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py
+  mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py mochiinstall_gui.py
 sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochiinstall"/mochiinstall-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
@@ -170,6 +170,7 @@ done
 echo "==> syncing mochiinstall files to airootfs..."
 cp "$MOCHIOS_DIR/installer.py" "$ISO_DIR/airootfs/usr/lib/mochiinstall/installer.py"
 cp "$MOCHIOS_DIR/mochiinstall_app.py" "$ISO_DIR/airootfs/usr/lib/mochiinstall/mochiinstall_app.py"
+cp "$MOCHIOS_DIR/mochiinstall_gui.py" "$ISO_DIR/airootfs/usr/lib/mochiinstall/mochiinstall_gui.py"
 cp "$MOCHIOS_DIR/mochi_ascii.py" "$ISO_DIR/airootfs/usr/lib/mochiinstall/mochi_ascii.py"
 cp "$MOCHIOS_DIR/mochiinstall_wrapper" "$ISO_DIR/airootfs/usr/local/bin/mochiinstall"
 

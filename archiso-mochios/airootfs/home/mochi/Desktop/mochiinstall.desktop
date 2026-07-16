@@ -2,7 +2,7 @@
 Type=Application
 Name=MochiOS Installer
 Comment=Install MochiOS to your system
-Exec=konsole -e mochiinstall
+Exec=mochiinstall
 Icon=system-software-install
 Terminal=false
 Categories=System;

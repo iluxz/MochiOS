@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
 import os, sys
+
 sys.path.insert(0, '/usr/lib/mochiinstall')
-from mochiinstall_app import main
+
+args = list(sys.argv)
+nightly = '--nightly' in args
+tui = '--tui' in args
+for flag in ('--nightly', '--tui'):
+    if flag in args:
+        args.remove(flag)
 
 if os.geteuid() != 0:
     os.execvp("sudo", ["sudo", "-E", sys.executable] + sys.argv)
+elif tui:
+    from mochiinstall_app import main as tui_main
+    tui_main()
 else:
-    main()
+    try:
+        from mochiinstall_gui import main as gui_main
+        sys.argv = args
+        if nightly:
+            sys.argv.append('--nightly')
+        gui_main()
+    except ImportError:
+        from mochiinstall_app import main as tui_main
+        tui_main()
