@@ -8,6 +8,33 @@ import (
 	"strings"
 )
 
+var knownPackages = map[string]string{
+	"firefox":         "Mozilla.Firefox",
+	"firefox-dev":     "Mozilla.Firefox.DeveloperEdition",
+	"firefox-nightly": "Mozilla.Firefox.Nightly",
+	"chrome":          "Google.Chrome",
+	"chromium":        "Google.Chromium",
+	"edge":            "Microsoft.Edge",
+	"brave":           "Brave.Brave",
+	"vim":             "vim.vim",
+	"neovim":          "Neovim.Neovim",
+	"vscode":          "Microsoft.VisualStudioCode",
+	"code":            "Microsoft.VisualStudioCode",
+	"spotify":         "Spotify.Spotify",
+	"discord":         "Discord.Discord",
+	"obsidian":        "Obsidian.Obsidian",
+	"7zip":            "7zip.7zip",
+	"vlc":             "VideoLAN.VLC",
+	"gimp":            "GIMP.GIMP",
+	"blender":         "BlenderFoundation.Blender",
+	"obs":             "OBSProject.OBSStudio",
+	"steam":           "Valve.Steam",
+	"git":             "Git.Git",
+	"python":          "Python.Python.3.13",
+	"nodejs":          "OpenJS.NodeJS",
+	"docker":          "Docker.DockerDesktop",
+}
+
 func beat(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: mochi beat <package>...")
@@ -33,6 +60,11 @@ func beat(args []string) error {
 }
 
 func beatWinget(pkg string) error {
+	// Check known packages map first (no search needed, avoids wrong picks)
+	if id, ok := knownPackages[strings.ToLower(pkg)]; ok {
+		return runWinget("install", "--id", "--exact", "--disable-interactivity", "--accept-package-agreements", "--accept-source-agreements", id)
+	}
+
 	// Resolve short name to exact ID via search, then install by ID
 	id, err := resolvePackage(pkg)
 	if err != nil {
@@ -78,6 +110,8 @@ func resolvePackage(query string) (string, error) {
 }
 
 func pickBest(ids []string, query string) string {
+	queryLower := strings.ToLower(query)
+
 	// If any ID matches the query exactly, use it
 	for _, id := range ids {
 		if strings.EqualFold(id, query) {
@@ -85,18 +119,34 @@ func pickBest(ids []string, query string) string {
 		}
 	}
 
-	// Prefer non-locale variant (no .locale suffix like .en-us or .MSIX)
+	// Match query against the name part after publisher prefix
+	// e.g. "firefox" matches "Mozilla.Firefox" over "Mozilla.Firefox.DeveloperEdition"
 	for _, id := range ids {
-		namePart := id
-		if idx := strings.Index(id, "."); idx != -1 {
-			namePart = id[:idx]
+		parts := strings.Split(id, ".")
+		for _, part := range parts {
+			if strings.EqualFold(part, queryLower) {
+				return id
+			}
 		}
-		check := strings.ToLower(id)
-		if !strings.Contains(check, "."+strings.ToLower(namePart)) && !strings.HasSuffix(check, ".msix") {
+	}
+
+	// Prefer the shortest ID (base package, not editions/variants)
+	best := ids[0]
+	bestParts := strings.Count(best, ".")
+	for _, id := range ids[1:] {
+		parts := strings.Count(id, ".")
+		if parts < bestParts {
+			best = id
+			bestParts = parts
+		}
+	}
+
+	// Prefer non-MSIX among same-depth IDs
+	for _, id := range ids {
+		if strings.Count(id, ".") == bestParts && !strings.HasSuffix(strings.ToLower(id), ".msix") {
 			return id
 		}
 	}
 
-	// Fallback: first ID
-	return ids[0]
+	return best
 }
