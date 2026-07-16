@@ -51,7 +51,7 @@ def abortable_run(cmd, abort_flag, check=True, timeout=None):
             break
     for line in proc.stdout:
         out_lines.append(line)
-    proc.wait(timeout=5)
+    proc.wait()
     out = "".join(out_lines)
     if check and proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd, out)
@@ -430,7 +430,8 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         pmconf_path = f"{target}/etc/pacman.conf"
         pmconf_orig = None
         if os.path.exists(pmconf_path):
-            pmconf_orig = open(pmconf_path).read()
+            with open(pmconf_path) as f:
+                pmconf_orig = f.read()
             with open(pmconf_path, "w") as f:
                 f.write(pmconf_orig.replace("SigLevel = Required DatabaseOptional", "SigLevel = Optional TrustAll"))
         else:

@@ -211,7 +211,7 @@ func evalCall(expr *CallExpr, env *Environment) (Object, error) {
 			return Object{}, err
 		}
 		if result.Type == RETURN_OBJ {
-			return Object{}, nil
+			return result, nil
 		}
 		return result, nil
 

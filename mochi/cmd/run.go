@@ -27,7 +27,7 @@ func findFile(path string) (string, error) {
 	}
 
 	exeDir := filepath.Dir(os.Args[0])
-	for _, dir := range []string{exeDir, exeDir + "\\.."} {
+	for _, dir := range []string{exeDir, filepath.Join(exeDir, "..")} {
 		candidate = filepath.Join(dir, path)
 		if resolved, err := filepath.Abs(candidate); err == nil {
 			if _, err := os.Stat(resolved); err == nil {
@@ -128,7 +128,11 @@ func runInterpreter(name, path string, args []string) error {
 
 func compileAndRun(compiler, path, flags string, args []string) error {
 	tmp := filepath.Join(os.TempDir(), "mochi-run-"+filepath.Base(path)+".out")
-	defer os.Remove(tmp)
+	defer func() {
+		if _, err := os.Stat(tmp); err == nil {
+			os.Remove(tmp)
+		}
+	}()
 
 	cmdArgs := []string{path, "-o", tmp}
 	if flags != "" {
@@ -150,7 +154,11 @@ func runCS(path string, args []string) error {
 	}
 
 	out := filepath.Join(os.TempDir(), "mochi-run-"+filepath.Base(path)+".exe")
-	defer os.Remove(out)
+	defer func() {
+		if _, err := os.Stat(out); err == nil {
+			os.Remove(out)
+		}
+	}()
 
 	if runtime.GOOS == "windows" {
 		compiler := "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe"
@@ -223,9 +231,13 @@ func runBrainfuck(prog string) error {
 	for ip < len(prog) {
 		switch prog[ip] {
 		case '>':
-			ptr++
+			if ptr < len(tape)-1 {
+				ptr++
+			}
 		case '<':
-			ptr--
+			if ptr > 0 {
+				ptr--
+			}
 		case '+':
 			tape[ptr]++
 		case '-':
@@ -234,8 +246,11 @@ func runBrainfuck(prog string) error {
 			fmt.Printf("%c", tape[ptr])
 		case ',':
 			b := []byte{0}
-			os.Stdin.Read(b)
-			tape[ptr] = b[0]
+			if _, err := os.Stdin.Read(b); err != nil {
+				tape[ptr] = 0
+			} else {
+				tape[ptr] = b[0]
+			}
 		case '[':
 			if tape[ptr] == 0 {
 				depth := 1

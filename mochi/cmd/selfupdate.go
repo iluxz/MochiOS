@@ -68,8 +68,11 @@ if exist "%s" (
 copy /y "%s" "%s" >nul
 del "%s"
 `, exe, exe, exe, tmp, exe, tmp)
-	os.WriteFile(bat, []byte(batContent), 0755)
-	fmt.Printf("done! run %s or reboot to finish the update\n", bat)
+	if err := os.WriteFile(bat, []byte(batContent), 0755); err != nil {
+		fmt.Printf("warning: could not create update script: %v\n", err)
+	} else {
+		fmt.Printf("done! run %s or reboot to finish the update\n", bat)
+	}
 }
 
 func replaceUnix(exe, tmp string) error {
