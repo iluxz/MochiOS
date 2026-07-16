@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""mochios gui installer — pyside6"""
+"""mochios gui installer — pyqt6"""
 
 import sys
 import os
@@ -8,14 +8,14 @@ import subprocess
 import threading
 import re
 
-from PySide6.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication, QWizard, QWizardPage, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QLineEdit, QListWidget, QListWidgetItem,
     QCheckBox, QGroupBox, QProgressBar, QWidget, QRadioButton,
     QButtonGroup, QTextEdit,
 )
-from PySide6.QtCore import Qt, Property, Signal, QObject, QThread, QTimer
-from PySide6.QtGui import QColor, QPalette, QFont
+from PyQt6.QtCore import Qt, pyqtProperty, pyqtSignal, QObject, QThread, QTimer
+from PyQt6.QtGui import QColor, QPalette, QFont
 
 from installer import do_install
 
@@ -115,9 +115,9 @@ STEP_PATTERNS = [
 
 
 class InstallWorker(QObject):
-    log_line = Signal(str)
-    progress = Signal(int)
-    finished = Signal(bool)
+    log_line = pyqtSignal(str)
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(bool)
 
     def __init__(self, config):
         super().__init__()
@@ -203,7 +203,7 @@ class WelcomePage(QWizardPage):
             f"color: {'#9664c8' if nightly else '#7a3cb0'};"
             " font-family: monospace; font-size: 13px;"
         )
-        art.setAlignment(Qt.AlignCenter)
+        art.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lo.addSpacing(4)
         lo.addWidget(art)
         lo.addSpacing(8)
@@ -239,12 +239,12 @@ class HostnamePage(QWizardPage):
         lo.addSpacing(8)
         lo.addWidget(QLabel("Password"))
         self._pw = QLineEdit()
-        self._pw.setEchoMode(QLineEdit.Password)
+        self._pw.setEchoMode(QLineEdit.EchoMode.Password)
         self._pw.textChanged.connect(self._validate)
         lo.addWidget(self._pw)
         lo.addWidget(QLabel("Confirm password"))
         self._pw2 = QLineEdit()
-        self._pw2.setEchoMode(QLineEdit.Password)
+        self._pw2.setEchoMode(QLineEdit.EchoMode.Password)
         self._pw2.textChanged.connect(self._validate)
         lo.addWidget(self._pw2)
         self._hint = QLabel("")
@@ -258,7 +258,7 @@ class HostnamePage(QWizardPage):
     def _validate(self):
         pw = self._pw.text()
         ok = bool(pw) and pw == self._pw2.text() and bool(self._hn.text()) and bool(self._un.text())
-        nb = self.wizard().button(QWizard.NextButton)
+        nb = self.wizard().button(QWizard.WizardButton.NextButton)
         if nb:
             nb.setEnabled(ok)
         if pw and pw != self._pw2.text():
@@ -305,16 +305,16 @@ class DiskPage(QWizardPage):
         self._list.itemSelectionChanged.connect(self._update_path)
         self.registerField("disk", self, "disk_path")
 
-    disk_path_changed = Signal()
-    disk_path = Property(str, lambda self: self._disk_path, notify=disk_path_changed)
+    disk_path_changed = pyqtSignal()
+    disk_path = pyqtProperty(str, lambda self: self._disk_path, notify=disk_path_changed)
 
     def _update_path(self):
         sel = self._list.selectedItems()
-        self._disk_path = sel[0].data(Qt.UserRole) or "" if sel else ""
+        self._disk_path = sel[0].data(Qt.ItemDataRole.UserRole) or "" if sel else ""
         self.disk_path_changed.emit()
 
     def _changed(self):
-        nb = self.wizard().button(QWizard.NextButton)
+        nb = self.wizard().button(QWizard.WizardButton.NextButton)
         if nb:
             nb.setEnabled(bool(self._list.selectedItems()))
 
@@ -338,7 +338,7 @@ class DiskPage(QWizardPage):
             size = parts[1] if len(parts) > 1 else ""
             model = parts[2] if len(parts) > 2 else ""
             it = QListWidgetItem(f"/dev/{name}  \u00b7  {size}" + (f"  \u00b7  {model}" if model else ""))
-            it.setData(Qt.UserRole, f"/dev/{name}")
+            it.setData(Qt.ItemDataRole.UserRole, f"/dev/{name}")
             self._list.addItem(it)
         if self._list.count() == 0:
             self._list.addItem("(no suitable disks found)")
@@ -542,10 +542,10 @@ class MochiWizard(QWizard):
         self.setObjectName("MochiWizard")
         self.setWindowTitle("MochiOS Installer" + (" (Nightly)" if nightly else ""))
         self.setMinimumSize(820, 560)
-        self.setWizardStyle(QWizard.ClassicStyle)
-        self.setOption(QWizard.NoBackButtonOnLastPage)
-        self.setOption(QWizard.HaveFinishButtonOnEarlyPages, False)
-        self.setOption(QWizard.NoDefaultButton)
+        self.setWizardStyle(QWizard.WizardStyle.ClassicStyle)
+        self.setOption(QWizard.WizardOption.NoBackButtonOnLastPage)
+        self.setOption(QWizard.WizardOption.HaveFinishButtonOnEarlyPages, False)
+        self.setOption(QWizard.WizardOption.NoDefaultButton)
         self.setStyleSheet(NIGHTLY_STYLE if nightly else NORMAL_STYLE)
 
         self._cfg = {}
@@ -569,14 +569,14 @@ class MochiWizard(QWizard):
         self.currentIdChanged.connect(self._on_page_change)
 
         for name in ("NextButton", "BackButton", "FinishButton", "CancelButton"):
-            b = self.button(getattr(QWizard, name))
+            b = self.button(getattr(QWizard.WizardButton, name))
             if b is not None:
                 b.setMinimumHeight(30)
 
-        nb = self.button(QWizard.NextButton)
+        nb = self.button(QWizard.WizardButton.NextButton)
         nb.setText("Next")
         nb.setObjectName("primaryBtn")
-        fb = self.button(QWizard.FinishButton)
+        fb = self.button(QWizard.WizardButton.FinishButton)
         fb.setText("Install")
         fb.setObjectName("primaryBtn")
 
