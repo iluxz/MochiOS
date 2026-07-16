@@ -7,7 +7,7 @@ import shutil
 import time
 from pathlib import Path
 
-CUSTOM_EXTRAS = {"sober", "zen-browser"}
+CUSTOM_EXTRAS = set()
 
 
 def run(cmd, check=True, capture=False, timeout=None, input_data=None):

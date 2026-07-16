@@ -229,8 +229,6 @@ class GuidedScreen(Screen):
             SelectionList(
                 ("steam", "steam", "steam" in extras),
                 ("wine", "wine", "wine" in extras),
-                ("sober (roblox)", "sober", "sober" in extras),
-                ("zen-browser", "zen-browser", "zen-browser" in extras),
                 id="extra_pkgs"
             ),
             Horizontal(Button("back", id="back"), Button("next", id="next", variant="primary")),

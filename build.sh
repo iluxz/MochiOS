@@ -159,9 +159,9 @@ fi
 echo "==> staging mochi packages for installer..."
 mkdir -p "$ISO_DIR/airootfs/opt/mochi-pkgs"
 if [ "$NIGHTLY" = "true" ]; then
-  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding-nightly mochi-abroot zen-browser sober"
+  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding-nightly mochi-abroot"
 else
-  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding mochi-abroot zen-browser sober"
+  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding mochi-abroot"
 fi
 for pkg in $STAGED_PKGS; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
