@@ -83,8 +83,7 @@ def retry_cmd(cmd, lfn, max_retries=5, delay=2, **kwargs):
             else:
                 raise
         except subprocess.CalledProcessError as e:
-            err = (e.stderr or e.stdout or "(no output)")
-            err = err.strip()[-200:]
+            err = (e.stderr or e.stdout or "(no output)").strip()
             lfn(f"[red]{cmd[0]} failed (attempt {attempt+1}/{max_retries}): {err}[/]")
             if attempt < max_retries - 1:
                 lfn(f"retrying {cmd[0]} (attempt {attempt+2}/{max_retries})...")
@@ -122,7 +121,7 @@ def partition_disk(disk, lfn):
     parts = [f"{disk}{sep}{n}" for n in (1, 2, 3, 4)]
     for p in parts:
         if not wait_for_device(p, timeout=10):
-            raise RuntimeError(f"partition {p} did not appear after partitioning")
+            raise RuntimeError(f"partition {p} did not appear after partitioning — check disk health or try a different disk")
     return parts
 
 
@@ -178,6 +177,7 @@ def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extr
         *kernel_pkgs,
         "linux-firmware",
         "btrfs-progs", "snapper", "sudo", "vim", "nano",
+        "gptfdisk",
         "networkmanager", "dhcpcd", "openssh", "reflector",
         "sbctl",
         "man-db", "man-pages", "zsh", "git", "flatpak",
