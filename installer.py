@@ -276,7 +276,7 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         os.makedirs(f"{target}/usr/share/mochios", exist_ok=True)
         shutil.copy2(key_src, key_dst)
         ch(["pacman-key", "--add", "/usr/share/mochios/mochios-key.pub"], check=False)
-        ch(["pacman-key", "--lsign-key", "signing@mochios.dev"], check=False)
+        ch(["pacman-key", "--lsign-key", "ci@mochios.dev"], check=False)
         lfn("  mochios key imported and trusted")
     else:
         lfn("  [yellow]mochios key not found, skipping[/]")

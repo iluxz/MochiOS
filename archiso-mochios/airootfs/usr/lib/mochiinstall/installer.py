@@ -51,7 +51,7 @@ def abortable_run(cmd, abort_flag, check=True, timeout=None):
             break
     for line in proc.stdout:
         out_lines.append(line)
-    proc.wait(timeout=5)
+    proc.wait()
     out = "".join(out_lines)
     if check and proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd, out)
@@ -227,9 +227,6 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     ch(["hwclock", "--systohc"])
     ch(["mkinitcpio", "-P"], to=300)
 
-    sep = part_suffix(disk)
-    root_dev = f"{disk}{sep}4"
-
     lfn("writing fstab...")
     fstab = (
         f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2\n"
@@ -279,7 +276,7 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         os.makedirs(f"{target}/usr/share/mochios", exist_ok=True)
         shutil.copy2(key_src, key_dst)
         ch(["pacman-key", "--add", "/usr/share/mochios/mochios-key.pub"], check=False)
-        ch(["pacman-key", "--lsign-key", "signing@mochios.dev"], check=False)
+        ch(["pacman-key", "--lsign-key", "ci@mochios.dev"], check=False)
         lfn("  mochios key imported and trusted")
     else:
         lfn("  [yellow]mochios key not found, skipping[/]")
@@ -433,7 +430,8 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         pmconf_path = f"{target}/etc/pacman.conf"
         pmconf_orig = None
         if os.path.exists(pmconf_path):
-            pmconf_orig = open(pmconf_path).read()
+            with open(pmconf_path) as f:
+                pmconf_orig = f.read()
             with open(pmconf_path, "w") as f:
                 f.write(pmconf_orig.replace("SigLevel = Required DatabaseOptional", "SigLevel = Optional TrustAll"))
         else:

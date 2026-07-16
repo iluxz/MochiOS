@@ -14,7 +14,7 @@ REPO_DIR="${REPO_DIR:-$MOCHIOS_DIR/repo}"
 OUT_DIR="${OUT_DIR:-$MOCHIOS_DIR/out}"
 ISO_DIR="${ISO_DIR:-$MOCHIOS_DIR/archiso-mochios}"
 WORK_DIR="${WORK_DIR:-/home/mochi/mochios-work}"
-SIGN_KEY="${SIGN_KEY:-signing@mochios.dev}"
+SIGN_KEY="${SIGN_KEY:-ci@mochios.dev}"
 GNUPGHOME="${GNUPGHOME:-/home/mochi/.mochios-gnupg}"
 GNUPG() { gpg --homedir "$GNUPGHOME" "$@"; }
 NIGHTLY="${NIGHTLY:-false}"
@@ -166,6 +166,12 @@ fi
 for pkg in $STAGED_PKGS; do
   cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
 done
+
+echo "==> syncing mochiinstall files to airootfs..."
+cp "$MOCHIOS_DIR/installer.py" "$ISO_DIR/airootfs/usr/lib/mochiinstall/installer.py"
+cp "$MOCHIOS_DIR/mochiinstall_app.py" "$ISO_DIR/airootfs/usr/lib/mochiinstall/mochiinstall_app.py"
+cp "$MOCHIOS_DIR/mochi_ascii.py" "$ISO_DIR/airootfs/usr/lib/mochiinstall/mochi_ascii.py"
+cp "$MOCHIOS_DIR/mochiinstall_wrapper" "$ISO_DIR/airootfs/usr/local/bin/mochiinstall"
 
 echo "==> stamping build date into mochios-release..."
 BUILD_DATE=$(date +%Y-%m-%d)
