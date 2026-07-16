@@ -173,14 +173,14 @@ def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extr
         kernel_pkgs.append(k + "-headers")
 
     base = [
-        "base", "base-devel",
+        "base",
         *kernel_pkgs,
         "linux-firmware",
         "btrfs-progs", "snapper", "sudo", "vim", "nano",
         "gptfdisk",
-        "networkmanager", "dhcpcd", "openssh", "reflector",
+        "networkmanager", "dhcpcd", "reflector",
         "sbctl",
-        "man-db", "man-pages", "zsh", "git", "flatpak",
+        "zsh", "git", "flatpak",
     ]
     de_pkgs = {
         "kde": ["plasma-desktop", "plasma-workspace", "kdeplasma-addons",
