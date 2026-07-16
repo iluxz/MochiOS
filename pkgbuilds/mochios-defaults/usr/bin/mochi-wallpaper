@@ -1,13 +1,18 @@
 #!/bin/bash
+sleep 2
+SCHEME="BreezeDark"
+for f in /usr/share/color-schemes/mochios*.colors; do
+  [ -f "$f" ] && SCHEME=$(basename "$f" .colors) && break
+done
+plasma-apply-colorscheme "$SCHEME" 2>/dev/null || true
+
 MODE="${1:-light}"
 WALLDIR="/usr/share/wallpapers/mochios/contents/images"
-
 if [ "$MODE" = "dark" ]; then
   WALL="${WALLDIR}/1920x1080-dark.png"
 else
   WALL="${WALLDIR}/1920x1080.png"
 fi
-
 if [ -f "$WALL" ]; then
   plasma-apply-wallpaperimage "$WALL" 2>/dev/null || true
 fi

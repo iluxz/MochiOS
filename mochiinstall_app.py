@@ -208,7 +208,7 @@ class GuidedScreen(Screen):
     # --- step content builders ---
 
     def _wrap(self, *widgets) -> Vertical:
-        return Vertical(*widgets, id="step_content_wrap")
+        return Vertical(*widgets)
 
     def step_hostname(self) -> None:
         self.body.mount(self._wrap(
@@ -505,6 +505,7 @@ class ProgressScreen(Screen):
 
 class MochiInstallApp(App):
     TITLE = "mochios installer"
+    MIN_SIZE = (80, 24)
     CSS = """
     Screen { background: $surface; }
 
@@ -529,14 +530,12 @@ class MochiInstallApp(App):
     }
     #step_body, #prog_body, #manual_body {
         align: center middle;
-        padding: 1 4;
+        padding: 0 2;
     }
-    #step_content_wrap { width: 56; }
-
     Input:focus { border: tall $secondary; }
     Button:focus { text-style: bold; }
     #pw_hint { height: 1; }
-    SelectionList { max-height: 12; }
+    SelectionList { max-height: 8; }
     .step_label { text-style: bold; padding-bottom: 1; }
 
     #prog_bar { margin: 0 2; }

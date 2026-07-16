@@ -194,6 +194,8 @@ echo "==> setting up systemd for live session..."
 mkdir -p "$ISO_DIR/airootfs/etc/systemd/system/graphical.target.wants"
 ln -sf /usr/lib/systemd/system/sddm.service "$ISO_DIR/airootfs/etc/systemd/system/display-manager.service"
 ln -sf /usr/lib/systemd/system/sddm.service "$ISO_DIR/airootfs/etc/systemd/system/graphical.target.wants/display-manager.service"
+ln -sf /usr/lib/systemd/system/vboxservice.service "$ISO_DIR/airootfs/etc/systemd/system/graphical.target.wants/vboxservice.service"
+ln -sf /usr/lib/systemd/system/NetworkManager.service "$ISO_DIR/airootfs/etc/systemd/system/graphical.target.wants/NetworkManager.service"
 
 echo "==> building iso..."
 mkdir -p "$OUT_DIR"
