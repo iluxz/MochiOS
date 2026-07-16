@@ -30,6 +30,7 @@ xdg-utils
 git
 python
 python-textual
+python-pyside6
 plasma-desktop
 plasma-nm
 plasma-pa
