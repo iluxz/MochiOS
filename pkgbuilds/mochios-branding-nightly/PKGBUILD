@@ -31,4 +31,7 @@ package() {
 
   install -dm755 "$pkgdir/etc/xdg/autostart"
   cp --no-preserve=ownership etc/xdg/autostart/mochi-nightly-watermark.desktop "$pkgdir/etc/xdg/autostart/"
+
+  install -dm755 "$pkgdir/boot/mochiboot"
+  cp --no-preserve=ownership etc/mochiboot.conf "$pkgdir/boot/mochiboot/mochiboot.conf"
 }
