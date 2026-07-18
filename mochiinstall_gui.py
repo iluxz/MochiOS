@@ -374,6 +374,7 @@ class FSPage(QWizardPage):
         for i, (n, d) in enumerate([
             ("limine", "modern, fast (recommended)"),
             ("grub",   "classic, widely compatible"),
+            ("mochiboot", "custom mochi fork of limine"),
         ]):
             rb = QRadioButton(f"  {n}  \u2014  {d}")
             self._bl.addButton(rb, i)
@@ -591,7 +592,7 @@ class MochiWizard(QWizard):
 
         if isinstance(p, FSPage):
             self._cfg["fs"] = ["btrfs", "ext4", "xfs"][p._fs.checkedId()]
-            self._cfg["bl"] = ["limine", "grub"][p._bl.checkedId()]
+            self._cfg["bl"] = ["limine", "grub", "mochiboot"][p._bl.checkedId()]
         elif isinstance(p, KernelPage):
             self._cfg["kernels"] = [
                 c.text().split("  ")[1] for c in p._cbs if c.isChecked()

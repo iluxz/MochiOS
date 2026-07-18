@@ -194,6 +194,7 @@ def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extr
     bl_pkgs = {
         "limine": ["limine"],
         "grub": ["grub"],
+        "mochiboot": ["mochiboot"],
     }
     pkgs = base + de_pkgs.get(de, []) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
     abortable_run(["pacstrap", "-K", target] + pkgs, abort_flag, timeout=900)
@@ -285,6 +286,8 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         install_limine(target, disk, root_uuid, lfn, ch, kernels=kernels)
     elif bootloader == "grub":
         install_grub(target, disk, root_uuid, lfn, ch, kernels=kernels)
+    elif bootloader == "mochiboot":
+        install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=kernels)
 
     lfn("signing boot files with sbctl...")
     keydir = t / "var/lib/sbctl/keys/db"
@@ -300,6 +303,8 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         sign_targets += ["/boot/limine/limine-bios.sys", "/boot/EFI/BOOT/BOOTX64.EFI"]
     elif bootloader == "grub":
         sign_targets += ["/boot/EFI/BOOT/BOOTX64.EFI"]
+    elif bootloader == "mochiboot":
+        sign_targets += ["/boot/mochiboot/limine-bios.sys", "/boot/EFI/BOOT/BOOTX64.EFI"]
     signed = 0
     for efifile in sign_targets:
         efipath = t / efifile.lstrip("/")
@@ -379,6 +384,37 @@ def install_grub(target, disk, root_uuid, lfn, ch, kernels=None):
     ch(["grub-install", "--target=x86_64-efi", "--efi-directory=/boot", "--bootloader-id=MOCHIOS", "--removable"])
     ch(["grub-install", "--target=i386-pc", disk])
     ch(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
+
+
+def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None):
+    if kernels is None:
+        kernels = ["linux"]
+    lfn("installing mochiboot...")
+
+    config_lines = ["TIMEOUT=5", "VERBOSE=no", "GRAPHICS=yes", ""]
+    for k in kernels:
+        vmlinuz = f"/boot/vmlinuz-{k}"
+        label = f"MOCHIOS ({k})" if len(kernels) > 1 else "MOCHIOS"
+        config_lines.append(f":{label}")
+        config_lines.append("    PROTOCOL=linux")
+        config_lines.append(f"    KERNEL_PATH={vmlinuz}")
+        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw quiet loglevel=3")
+        config_lines.append("")
+
+    config = "\n".join(config_lines)
+
+    lfn("installing mochiboot (bios)...")
+    mb_dir = Path(target) / "boot" / "mochiboot"
+    mb_dir.mkdir(parents=True, exist_ok=True)
+    (mb_dir / "mochiboot.conf").write_text(config)
+    ch(["cp", "/usr/share/mochiboot/limine-bios.sys", "/boot/mochiboot/limine-bios.sys"], to=30)
+    ch(["mochiboot", "bios-install", disk], to=30, check=False)
+
+    lfn("installing mochiboot (uefi)...")
+    efi_dir = Path(target) / "boot" / "EFI" / "BOOT"
+    efi_dir.mkdir(parents=True, exist_ok=True)
+    (efi_dir / "mochiboot.conf").write_text(config)
+    ch(["cp", "/usr/share/mochiboot/BOOTX64.EFI", "/boot/EFI/BOOT/BOOTX64.EFI"], to=30)
 
 
 def cleanup_mounts(target):

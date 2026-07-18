@@ -1,0 +1,46 @@
+# Maintainer: mochios team
+pkgname=mochiboot
+pkgver=12.5.0
+pkgrel=1
+pkgdesc="mochiboot - a modern, secure bootloader forked from limine"
+arch=('x86_64')
+url="https://github.com/iluxz/mochiboot"
+license=('BSD-2-Clause')
+depends=('gcc-libs' 'glibc')
+makedepends=('gcc' 'make' 'nasm' 'autoconf' 'automake' 'gnu-which' 'mtools')
+source=("git+https://github.com/iluxz/mochiboot.git#branch=v12.x"
+        "mochiboot.conf")
+sha256sums=('SKIP'
+            'SKIP')
+
+build() {
+  cd "$srcdir/mochiboot"
+  ./bootstrap
+  ./configure --enable-grub --enable-bios --enable-uefi-x86-64
+  make
+}
+
+package() {
+  cd "$srcdir/mochiboot"
+  make install DESTDIR="$pkgdir"
+
+  # rename the limine binary to mochiboot
+  if [[ -f "$pkgdir/usr/bin/limine" ]]; then
+    mv "$pkgdir/usr/bin/limine" "$pkgdir/usr/bin/mochiboot"
+  fi
+
+  # rename man pages
+  if [[ -f "$pkgdir/usr/share/man/man1/limine.1" ]]; then
+    mv "$pkgdir/usr/share/man/man1/limine.1" "$pkgdir/usr/share/man/man1/mochiboot.1"
+  fi
+
+  # install mochiboot default config
+  install -dm755 "$pkgdir/usr/share/mochiboot"
+  install -m644 "$srcdir/mochiboot.conf" "$pkgdir/usr/share/mochiboot/mochiboot.conf"
+
+  # rename files from limine paths to mochiboot paths
+  install -dm755 "$pkgdir/boot/mochiboot"
+  if [[ -f "$pkgdir/usr/share/limine/limine-bios.sys" ]]; then
+    cp "$pkgdir/usr/share/limine/limine-bios.sys" "$pkgdir/usr/share/mochiboot/limine-bios.sys"
+  fi
+}

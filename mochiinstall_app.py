@@ -327,6 +327,7 @@ class GuidedScreen(Screen):
             SelectionList(
                 ("limine", "limine", bl == "limine"),
                 ("grub", "grub", bl == "grub"),
+                ("mochiboot", "mochiboot", bl == "mochiboot"),
                 id="bootloader"
             ),
         ))
