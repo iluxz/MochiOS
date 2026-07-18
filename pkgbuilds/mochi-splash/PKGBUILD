@@ -1,0 +1,24 @@
+# Maintainer: mochios team
+pkgname=mochi-splash
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="mochi-splash - animated boot splash for mochios"
+arch=('x86_64')
+url="https://github.com/iluxz/MochiOS"
+license=('BSD-2-Clause')
+makedepends=('gnu-efi' 'gcc' 'binutils')
+source=("splash.c"
+        "Makefile")
+sha256sums=('SKIP'
+            'SKIP')
+
+build() {
+  cd "$srcdir"
+  make
+}
+
+package() {
+  cd "$srcdir"
+  install -dm755 "$pkgdir/usr/share/mochi-splash"
+  install -m644 mochi-splash.efi "$pkgdir/usr/share/mochi-splash/mochi-splash.efi"
+}

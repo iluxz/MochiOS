@@ -441,6 +441,22 @@ def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None):
     (efi_dir / "mochiboot.conf").write_text(config)
     ch(["cp", "/usr/share/mochiboot/BOOTX64.EFI", "/boot/EFI/BOOT/BOOTX64.EFI"], to=30)
 
+    lfn("installing mochiboot (alt path)...")
+    mochi_efi = Path(target) / "boot" / "EFI" / "mochi"
+    mochi_efi.mkdir(parents=True, exist_ok=True)
+    (mochi_efi / "mochiboot.conf").write_text(config)
+    ch(["cp", "/usr/share/mochiboot/BOOTX64.EFI", "/boot/EFI/mochi/mochiboot.efi"], to=30)
+
+    lfn("installing mochi-splash...")
+    if os.path.exists("/usr/share/mochi-splash/mochi-splash.efi"):
+        ch(["cp", "/usr/share/mochi-splash/mochi-splash.efi", "/boot/EFI/mochi/mochi-splash.efi"], to=10)
+        lfn("registering mochi-splash boot entry...")
+        try:
+            ch(["efibootmgr", "-c", "-d", disk.replace("/dev/", "").rstrip("0123456789"),
+                "-p", "1", "-L", "mochios", "-l", "\\EFI\\mochi\\mochi-splash.efi"], to=10, check=False)
+        except Exception:
+            lfn("  [yellow]efibootmgr not available, skipping[/]")
+
     lfn("installing mochi wallpaper...")
     for src in ["/usr/share/backgrounds/mochios/dark.png", "/usr/share/wallpapers/mochios/contents/images/1920x1080.png"]:
         if Path(target + src).exists():
