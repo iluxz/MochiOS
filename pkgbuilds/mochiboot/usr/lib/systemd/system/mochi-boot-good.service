@@ -1,0 +1,13 @@
+[Unit]
+Description=MochiBoot boot success marker
+DefaultDependencies=no
+After=local-fs.target
+Before=display-manager.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mochi-snapshot mark-good
+RemainAfterExit=yes
+
+[Install]
+WantedBy=basic.target

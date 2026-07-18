@@ -1,0 +1,169 @@
+#!/bin/bash
+# mochi-snapshot - btrfs snapshot management for mochiboot
+# list, select, and boot from btrfs snapshots
+
+set -e
+
+ROOT_DEV=""
+BOOT_DIR="/boot/mochiboot"
+
+find_root() {
+    for arg in $(cat /proc/cmdline 2>/dev/null || echo ""); do
+        case "$arg" in
+            root=UUID=*)
+                local uuid="${arg#root=UUID=}"
+                ROOT_DEV=$(blkid -U "$uuid" 2>/dev/null)
+                ;;
+            root=/dev/*)
+                ROOT_DEV="${arg#root=}"
+                ;;
+        esac
+    done
+    if [ -z "$ROOT_DEV" ] || [ ! -b "$ROOT_DEV" ]; then
+        echo "error: could not find root device from cmdline" >&2
+        return 1
+    fi
+}
+
+list_snapshots() {
+    find_root
+    local mnt=$(mktemp -d)
+    mount -o subvolid=5 "$ROOT_DEV" "$mnt" 2>/dev/null || {
+        echo "error: could not mount btrfs" >&2
+        rm -rf "$mnt"
+        return 1
+    }
+
+    echo "snapshots on $(basename "$ROOT_DEV"):"
+    echo "---"
+    btrfs subvolume list -o "$mnt" 2>/dev/null | grep -v "^ID 5" | awk '{print "  " $NF}'
+
+    umount "$mnt"
+    rm -rf "$mnt"
+}
+
+select_snapshot() {
+    find_root
+    local mnt=$(mktemp -d)
+    mount -o subvolid=5 "$ROOT_DEV" "$mnt" 2>/dev/null || {
+        echo "error: could not mount btrfs" >&2
+        rm -rf "$mnt"
+        return 1
+    }
+
+    local subvols=()
+    while IFS= read -r line; do
+        subvols+=("$(echo "$line" | awk '{print $NF}')")
+    done < <(btrfs subvolume list -o "$mnt" 2>/dev/null | grep -v "^ID 5")
+
+    umount "$mnt"
+    rm -rf "$mnt"
+
+    if [ ${#subvols[@]} -eq 0 ]; then
+        echo "no snapshots found"
+        return 1
+    fi
+
+    echo "select a snapshot:"
+    for i in "${!subvols[@]}"; do
+        printf "  [%d] %s\n" $((i + 1)) "${subvols[$i]}"
+    done
+    echo ""
+    printf "enter choice [1-%d]: " "${#subvols[@]}"
+    local choice
+    read -r choice
+
+    if [ "$choice" -gt 0 ] 2>/dev/null && [ "$choice" -le "${#subvols[@]}" ]; then
+        local selected="${subvols[$((choice - 1))]}"
+        echo "$selected"
+    fi
+}
+
+boot_snapshot() {
+    local snapshot="$1"
+    if [ -z "$snapshot" ]; then
+        snapshot=$(select_snapshot)
+    fi
+    if [ -z "$snapshot" ]; then
+        echo "no snapshot selected"
+        return 1
+    fi
+
+    echo "setting next boot to snapshot: $snapshot"
+
+    # write snapshot info for the bootloader/initramfs
+    mkdir -p "$BOOT_DIR"
+    echo "$snapshot" > "$BOOT_DIR/next_snapshot"
+    echo "  wrote $BOOT_DIR/next_snapshot"
+    echo "  reboot to boot from this snapshot"
+    echo ""
+    echo "  to cancel: rm -f $BOOT_DIR/next_snapshot"
+}
+
+BOOT_DIR="/boot/mochiboot"
+COUNTER_FILE="$BOOT_DIR/boot_counter"
+
+mark_good() {
+    rm -f "$COUNTER_FILE"
+    rm -f "$BOOT_DIR/next_snapshot"
+    echo "  boot marked successful"
+}
+
+check_counter() {
+    local max="${1:-3}"
+    if [ -f "$COUNTER_FILE" ]; then
+        local count=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
+        if [ "$count" -ge "$max" ]; then
+            echo "recovery"
+            return 0
+        fi
+    fi
+    echo "ok"
+    return 0
+}
+
+increment_counter() {
+    local count=0
+    if [ -f "$COUNTER_FILE" ]; then
+        count=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
+    fi
+    count=$((count + 1))
+    mkdir -p "$BOOT_DIR"
+    echo "$count" > "$COUNTER_FILE"
+    echo "  boot count: $count"
+}
+
+cmd="${1:-list}"
+case "$cmd" in
+    list|l)
+        list_snapshots
+        ;;
+    select|s)
+        select_snapshot
+        ;;
+    boot|b)
+        shift
+        boot_snapshot "$@"
+        ;;
+    mark-good|good)
+        mark_good
+        ;;
+    check)
+        shift
+        check_counter "$@"
+        ;;
+    inc|increment)
+        increment_counter
+        ;;
+    *)
+        echo "usage: mochi-snapshot {list|select|boot|mark-good|check|inc}"
+        echo ""
+        echo "  list         - list all btrfs snapshots"
+        echo "  select       - interactively pick a snapshot"
+        echo "  boot <path>  - set a snapshot to boot next"
+        echo "  mark-good    - mark current boot as successful"
+        echo "  check [max]  - check if boot count exceeds max"
+        echo "  inc          - increment boot counter"
+        exit 1
+        ;;
+esac

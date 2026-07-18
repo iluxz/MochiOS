@@ -1,0 +1,128 @@
+# mochi-snapshot runtime hook
+# triggered by mochi.snapshot_picker or mochi.recovery on kernel cmdline
+# scans btrfs subvolumes and lets user pick one to boot
+
+run_hook() {
+    local snapshot_mode=false
+
+    if grep -q "mochi.snapshot_picker" /proc/cmdline 2>/dev/null; then
+        snapshot_mode=true
+    fi
+
+    if grep -q "mochi.recovery" /proc/cmdline 2>/dev/null; then
+        echo ""
+        echo "============================================"
+        echo "  mochios recovery mode"
+        echo "============================================"
+        echo ""
+        echo "  [1]  drop to recovery shell"
+        echo "  [2]  boot from a snapshot"
+        echo "  [0]  boot normally"
+        echo ""
+        printf "choice: "
+        local c
+        read -r c
+        case "$c" in
+            1)
+                echo "entering recovery shell..."
+                echo "  mount root manually: mount -o subvol=root_a /dev/root_dev /new_root"
+                echo "  exit to continue boot"
+                /bin/sh
+                return 0
+                ;;
+            2)
+                snapshot_mode=true
+                ;;
+            *)
+                return 0
+                ;;
+        esac
+    fi
+
+    if [ "$snapshot_mode" = false ]; then
+        return 0
+    fi
+
+    echo ""
+    echo "============================================"
+    echo "  mochiboot snapshot picker"
+    echo "============================================"
+    echo ""
+
+    # find root device from cmdline
+    local root_dev=""
+    for arg in $(cat /proc/cmdline); do
+        case "$arg" in
+            root=UUID=*)
+                local uuid="${arg#root=UUID=}"
+                root_dev=$(blkid -U "$uuid" 2>/dev/null)
+                ;;
+            root=PARTUUID=*)
+                local puuid="${arg#root=PARTUUID=}"
+                root_dev=$(blkid -PU "$puuid" 2>/dev/null || echo "")
+                ;;
+            root=/dev/*)
+                root_dev="${arg#root=}"
+                ;;
+        esac
+    done
+
+    if [ -z "$root_dev" ] || [ ! -b "$root_dev" ]; then
+        echo "could not find root device"
+        read -r _
+        return 0
+    fi
+
+    # mount btrfs to scan subvolumes
+    local mnt="/tmp/mochi_btrfs_scan"
+    mkdir -p "$mnt"
+    if ! mount -o subvolid=5 "$root_dev" "$mnt" 2>/dev/null; then
+        echo "could not mount btrfs"
+        read -r _
+        return 0
+    fi
+
+    echo "scanning for snapshots..."
+    local subvols=()
+    while IFS= read -r line; do
+        subvols+=("$(echo "$line" | awk '{print $NF}')")
+    done < <(btrfs subvolume list -o "$mnt" 2>/dev/null | grep -v "^ID 5" | head -50)
+
+    echo ""
+    if [ ${#subvols[@]} -eq 0 ]; then
+        echo "  no snapshots found"
+        umount "$mnt"
+        read -r _
+        return 0
+    fi
+
+    echo "select a snapshot to boot:"
+    echo ""
+    for i in "${!subvols[@]}"; do
+        printf "  [%d]  %s\n" $((i + 1)) "${subvols[$i]}"
+    done
+    printf "  [0]  boot normally"
+    echo ""
+    echo ""
+
+    printf "choice [0-%d]: " "${#subvols[@]}"
+    local choice
+    read -r choice
+
+    if [ "$choice" -gt 0 ] 2>/dev/null && [ "$choice" -le "${#subvols[@]}" ]; then
+        local selected="${subvols[$((choice - 1))]}"
+        echo ""
+        echo "  booting snapshot: $selected"
+
+        # set up mount handler to use selected snapshot
+        eval "mochi_mount_handler() {
+            echo \"[mochi-snapshot] mounting snapshot: $selected\"
+            mount -o \"subvol=$selected\" \"$root_dev\" \"\$1\"
+        }"
+        mount_handler=mochi_mount_handler
+    else
+        echo "  booting normally"
+    fi
+
+    umount "$mnt"
+}

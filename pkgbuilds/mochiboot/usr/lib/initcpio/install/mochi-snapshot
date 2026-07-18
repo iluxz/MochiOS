@@ -1,0 +1,16 @@
+# install hook for mochi-snapshot picker
+# adds btrfs subvolume boot selection to initramfs
+
+build() {
+    add_binary "btrfs"
+    add_binary "/usr/bin/mochi-snapshot" "/usr/bin/mochi-snapshot"
+    add_runscript
+}
+
+help() {
+    cat <<EOF
+  mochi-snapshot - btrfs snapshot picker for mochiboot
+  Pass mochi.snapshot_picker on kernel cmdline to trigger.
+  Scans for btrfs subvolumes and lets you pick which to boot.
+EOF
+}
