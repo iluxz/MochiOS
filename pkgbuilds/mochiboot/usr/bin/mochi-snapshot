@@ -103,34 +103,63 @@ boot_snapshot() {
 BOOT_DIR="/boot/mochiboot"
 COUNTER_FILE="$BOOT_DIR/boot_counter"
 
+# EFI variable path (mochiboot GUID: 6d6f6368-6962-6f6f-7400-000000000000)
+MOCHIBOOT_GUID="6d6f6368-6962-6f6f-7400-000000000000"
+EFIVARFS="/sys/firmware/efi/efivars"
+BOOT_COUNT_VAR="MochiBootBootCount-$MOCHIBOOT_GUID"
+FORCE_RECOVERY_VAR="MochiBootForceRecovery-$MOCHIBOOT_GUID"
+
+# EFI variable attributes (BS|RT = 0x07)
+ATTRS="\x07\x00\x00\x00"
+
+reset_efi_counter() {
+    local efivar="$EFIVARFS/$BOOT_COUNT_VAR"
+    if [ -f "$efivar" ]; then
+        # attributes (4 bytes LE) + counter value (4 bytes LE) = 8 bytes
+        printf '%b\x00\x00\x00\x00' "$ATTRS" > "$efivar"
+        echo "  boot counter reset (efivar)"
+    fi
+}
+
+set_force_recovery() {
+    local efivar="$EFIVARFS/$FORCE_RECOVERY_VAR"
+    printf '%b\x01\x00\x00\x00' "$ATTRS" > "$efivar"
+    echo "  force recovery on next boot (efivar)"
+}
+
+get_efi_counter() {
+    if [ -f "$EFIVARFS/$BOOT_COUNT_VAR" ]; then
+        local data
+        data=$(cat "$EFIVARFS/$BOOT_COUNT_VAR" 2>/dev/null) || return 1
+        # skip first 4 bytes (attrs), read 4 bytes LE
+        printf '%d' "'${data:4:1}" 2>/dev/null
+    fi
+}
+
 mark_good() {
     rm -f "$COUNTER_FILE"
     rm -f "$BOOT_DIR/next_snapshot"
+    if [ -d "$EFIVARFS" ]; then
+        reset_efi_counter
+    fi
     echo "  boot marked successful"
 }
 
 check_counter() {
     local max="${1:-3}"
-    if [ -f "$COUNTER_FILE" ]; then
-        local count=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
-        if [ "$count" -ge "$max" ]; then
-            echo "recovery"
-            return 0
-        fi
+    local count=0
+    # check efivar first, fall back to file
+    if [ -f "$EFIVARFS/$BOOT_COUNT_VAR" ]; then
+        count=$(get_efi_counter) || count=0
+    elif [ -f "$COUNTER_FILE" ]; then
+        count=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
+    fi
+    if [ "$count" -ge "$max" ]; then
+        echo "recovery"
+        return 0
     fi
     echo "ok"
     return 0
-}
-
-increment_counter() {
-    local count=0
-    if [ -f "$COUNTER_FILE" ]; then
-        count=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
-    fi
-    count=$((count + 1))
-    mkdir -p "$BOOT_DIR"
-    echo "$count" > "$COUNTER_FILE"
-    echo "  boot count: $count"
 }
 
 cmd="${1:-list}"
@@ -153,17 +182,28 @@ case "$cmd" in
         check_counter "$@"
         ;;
     inc|increment)
-        increment_counter
+        if [ -d "$EFIVARFS" ]; then
+            local count=$(get_efi_counter)
+            count=$((count + 1))
+            printf '%b%s' "$ATTRS" "$(printf '\\x%02x' "$count")\x00\x00\x00" > "$EFIVARFS/$BOOT_COUNT_VAR"
+            echo "  boot count: $count (efivar)"
+        else
+            increment_counter
+        fi
+        ;;
+    force-recovery|fr)
+        set_force_recovery
         ;;
     *)
-        echo "usage: mochi-snapshot {list|select|boot|mark-good|check|inc}"
+        echo "usage: mochi-snapshot {list|select|boot|mark-good|check|inc|force-recovery}"
         echo ""
-        echo "  list         - list all btrfs snapshots"
-        echo "  select       - interactively pick a snapshot"
-        echo "  boot <path>  - set a snapshot to boot next"
-        echo "  mark-good    - mark current boot as successful"
-        echo "  check [max]  - check if boot count exceeds max"
-        echo "  inc          - increment boot counter"
+        echo "  list              - list all btrfs snapshots"
+        echo "  select            - interactively pick a snapshot"
+        echo "  boot <path>       - set a snapshot to boot next"
+        echo "  mark-good         - mark current boot as successful"
+        echo "  check [max]       - check if boot count exceeds max"
+        echo "  inc               - increment boot counter"
+        echo "  force-recovery    - force recovery entry on next boot"
         exit 1
         ;;
 esac

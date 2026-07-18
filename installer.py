@@ -409,6 +409,8 @@ def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None):
         "TERM_MARGIN=2",
         "TERM_MARGIN_GRADIENT=0",
         "",
+        "MOCHIBOOT_RECOVERY_ENTRY=MOCHIOS (recovery mode)",
+        "",
     ]
     for k in kernels:
         vmlinuz = f"/boot/vmlinuz-{k}"
