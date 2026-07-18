@@ -15,6 +15,7 @@ var subcommands = []string{
 	"update", "upgrade",
 	"search",
 	"status",
+	"repo",
 	"deploy",
 	"rollback",
 	"snapshot",
@@ -58,6 +59,8 @@ func Execute() error {
 		return search(args)
 	case "status":
 		return statusCmd(args)
+	case "repo":
+		return repo(args)
 	case "deploy":
 		return deploy(args)
 	case "rollback":
@@ -85,6 +88,7 @@ usage:
   mochi update         atomic update or winget upgrade --all
   mochi search <q>     search for a package
   mochi status         show system status
+  mochi repo add       add the mochi package repo to pacman.conf
   mochi deploy <pkgs>  mochios only: deploy to inactive root
   mochi rollback       mochios only: rollback snapshot
   mochi snapshot       mochios only: list snapshots

@@ -1,0 +1,17 @@
+pkgbase = mochiboot-bin
+	pkgdesc = A modern, secure bootloader forked from limine - prebuilt binary
+	pkgver = 12.5.0
+	pkgrel = 1
+	url = https://github.com/iluxz/mochiboot
+	install = 
+	arch = x86_64
+	license = BSD-2-Clause
+	depends = gcc-libs
+	depends = glibc
+	depends = btrfs-progs
+	provides = mochiboot=12.5.0
+	conflicts = mochiboot
+	source = https://github.com/iluxz/MochiOS/releases/download/mochiboot-12.5.0/mochiboot-12.5.0-x86_64.pkg.tar.zst
+	sha256sums = SKIP
+
+pkgname = mochiboot-bin

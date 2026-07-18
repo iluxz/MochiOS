@@ -1,0 +1,22 @@
+# Maintainer: mochios team <mochios@proton.me>
+# AUR: mochiboot-bin - precompiled binary of mochiboot
+# Fetches the latest x86_64 binary from the mochios CI
+
+pkgname=mochiboot-bin
+pkgver=12.5.0
+pkgrel=1
+pkgdesc="A modern, secure bootloader forked from limine - prebuilt binary"
+arch=('x86_64')
+url="https://github.com/iluxz/mochiboot"
+license=('BSD-2-Clause')
+depends=('gcc-libs' 'glibc' 'btrfs-progs')
+provides=("mochiboot=${pkgver}")
+conflicts=('mochiboot')
+source=("https://github.com/iluxz/MochiOS/releases/download/mochiboot-${pkgver}/mochiboot-${pkgver}-x86_64.pkg.tar.zst")
+sha256sums=('SKIP')
+
+package() {
+  # the source is already a pacman package, just extract it
+  tar -xzf "$srcdir"/*.pkg.tar.zst -C "$pkgdir" 2>/dev/null || \
+  bsdtar -xf "$srcdir"/*.pkg.tar.zst -C "$pkgdir"
+}
