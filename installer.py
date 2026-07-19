@@ -518,6 +518,12 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         repo_extra = [p for p in extra_all if isinstance(p, str) and p not in CUSTOM_EXTRAS]
         custom_extra = [p for p in extra_all if isinstance(p, str) and p in CUSTOM_EXTRAS]
 
+        # ensure [mochi] repo is available for pacstrap
+        mochi_conf = "\n[mochi]\nSigLevel = Optional TrustAll\nServer = https://github.com/iluxz/MochiOS/raw/gh-pages/repo/os/x86_64\n"
+        with open("/etc/pacman.conf", "a") as f:
+            if "[mochi]" not in open("/etc/pacman.conf").read():
+                f.write(mochi_conf)
+
         pacstrap_base(target, log_fn, de=config.get("de", "kde"), greeter=config.get("greeter", "sddm"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag)
 
         log_fn("relaxing SigLevel for custom packages...")
