@@ -157,6 +157,18 @@ GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/moch
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/zen-browser-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/sober-[0-9]*.pkg.tar.zst
 
+echo "==> replacing symlinks with real files (GitHub raw doesn't follow symlinks)..."
+cd "$REPO_DIR/os/x86_64"
+for f in mochi.db mochi.files; do
+    if [ -L "$f" ]; then
+        real="${f}.tar.zst"
+        rm -f "$f"
+        cp "$real" "$f"
+        # also handle sig if it exists
+        [ -f "${real}.sig" ] && cp "${real}.sig" "${f}.sig"
+    fi
+done
+
 echo "==> staging public key for ISO..."
 if [ -f "$REPO_DIR/pubkey/mochios-key.pub" ]; then
   mkdir -p "$ISO_DIR/airootfs/usr/share/mochios"

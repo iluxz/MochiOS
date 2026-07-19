@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Nuke Discover from Taskbar
+Exec=/usr/lib/mochiinstall/nuke-discover.sh
+Terminal=false
+NoDisplay=true
+X-KDE-autostart-after=plasma-shell
