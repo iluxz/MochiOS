@@ -162,9 +162,8 @@ cd "$REPO_DIR/os/x86_64"
 for f in mochi.db mochi.files; do
     if [ -L "$f" ]; then
         real="${f}.tar.zst"
-        rm -f "$f"
+        rm -f "$f" "${f}.sig"
         cp "$real" "$f"
-        # also handle sig if it exists
         [ -f "${real}.sig" ] && cp "${real}.sig" "${f}.sig"
     fi
 done
