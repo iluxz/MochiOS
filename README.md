@@ -1,6 +1,8 @@
 <div align="center">
   <img src="mochi-logo.png" alt="MochiOS" width="128">
   <br>
+  <small><i>made by my friend, men</i></small>
+  <br><br>
   <h1>MochiOS</h1>
   <p><strong>arch-based linux distro with atomic updates, btrfs snapshots, and a soft squishy purple vibe</strong></p>
   <p>
