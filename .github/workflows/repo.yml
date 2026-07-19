@@ -61,7 +61,7 @@ jobs:
           pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
           tar czf "mochiinstall-$pkgver.tar.gz" \
             -C "$PWD/../.." \
-            mochiinstall_wrapper installer.py mochiinstall_app.py mochi_ascii.py
+            mochiinstall_wrapper installer.py mochiinstall_app.py mochiinstall_gui.py mochi_ascii.py
           sudo -u builder makepkg -cf --noconfirm --nodeps
 
       - name: Create repo
