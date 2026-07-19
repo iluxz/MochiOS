@@ -11,6 +11,7 @@ on:
       - "installer.py"
       - "mochiinstall_app.py"
       - "mochi_ascii.py"
+      - "build.sh"
       - "scripts/**"
     branches: [main]
   workflow_dispatch:
