@@ -1,0 +1,22 @@
+pkgbase = mochiboot
+	pkgdesc = A modern, secure bootloader forked from limine with mochios enhancements (boot counter, snapshot picker)
+	pkgver = 12.5.0
+	pkgrel = 1
+	url = https://github.com/iluxz/mochiboot
+	install = 
+	arch = x86_64
+	license = BSD-2-Clause
+	makedepends = gcc
+	makedepends = make
+	makedepends = nasm
+	makedepends = autoconf
+	makedepends = automake
+	makedepends = gnu-which
+	makedepends = mtools
+	depends = gcc-libs
+	depends = glibc
+	depends = btrfs-progs
+	source = git+https://github.com/iluxz/mochiboot.git#branch=v12.x
+	sha256sums = SKIP
+
+pkgname = mochiboot

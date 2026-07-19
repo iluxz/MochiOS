@@ -6,6 +6,7 @@ on:
       - "pkgbuilds/mochi/**"
       - "mochi/**"
       - "pkgbuilds/mochiinstall/**"
+      - "pkgbuilds/mochiboot/**"
       - "mochiinstall_wrapper"
       - "installer.py"
       - "mochiinstall_app.py"
@@ -31,7 +32,7 @@ jobs:
         run: |
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Sy --noconfirm base-devel go python python-textual zstd git fakeroot
+          pacman -Sy --noconfirm base-devel go python python-textual zstd git fakeroot nasm autoconf automake mtools
 
       - name: Create builder
         run: |
@@ -64,10 +65,17 @@ jobs:
             mochiinstall_wrapper installer.py mochiinstall_app.py mochiinstall_gui.py mochi_ascii.py
           sudo -u builder makepkg -cf --noconfirm --nodeps
 
+      - name: Build mochiboot
+        run: |
+          cd pkgbuilds/mochiboot
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' PKGBUILD
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
       - name: Create repo
         run: |
           mkdir -p /repo/os/x86_64
-          for f in pkgbuilds/mochi/mochi-*.pkg.tar.zst pkgbuilds/mochiinstall/mochiinstall-*.pkg.tar.zst; do
+          for f in pkgbuilds/mochi/mochi-*.pkg.tar.zst pkgbuilds/mochiinstall/mochiinstall-*.pkg.tar.zst pkgbuilds/mochiboot/mochiboot-*.pkg.tar.zst; do
             [ -f "$f" ] || continue
             cp "$f" /repo/os/x86_64/
           done

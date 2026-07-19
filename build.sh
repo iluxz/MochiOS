@@ -51,6 +51,13 @@ tar czf "mochiinstall-$pkgver.tar.gz" -C "$MOCHIOS_DIR" \
 sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochiinstall"/mochiinstall-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
+echo "==> rebuilding mochiboot pkg..."
+cd "$MOCHIOS_DIR/pkgbuilds/mochiboot"
+pkgver=$(_get_pkgver PKGBUILD)
+tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' PKGBUILD
+sudo -u mochi makepkg -cf --noconfirm --nodeps
+cp "$MOCHIOS_DIR/pkgbuilds/mochiboot"/mochiboot-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
+
 echo "==> rebuilding mochios-defaults pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochios-defaults"
 pkgver=$(_get_pkgver PKGBUILD)
@@ -126,6 +133,7 @@ for pattern in \
   "$REPO_DIR/os/x86_64/"mochios-branding-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochios-branding-nightly-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochi-abroot-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"mochiboot-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"zen-browser-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"sober-[0-9]*.pkg.tar.zst; do
   for pkg in $pattern; do
@@ -145,6 +153,7 @@ if [ "$NIGHTLY" = "true" ]; then
   GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-branding-nightly-[0-9]*.pkg.tar.zst
 fi
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochi-abroot-[0-9]*.pkg.tar.zst
+GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochiboot-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/zen-browser-[0-9]*.pkg.tar.zst
 GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/sober-[0-9]*.pkg.tar.zst
 
