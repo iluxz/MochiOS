@@ -1,0 +1,8 @@
+## mochios live mirrorlist
+## generated 2026-07-19
+
+Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+Server = https://archlinux.uk.mirror.allworldit.com/archlinux/$repo/os/$arch
+Server = https://mirror.one.com/archlinux/$repo/os/$arch
+Server = https://archlinux.thaller.ws/$repo/os/$arch
