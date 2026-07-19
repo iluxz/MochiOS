@@ -11,10 +11,10 @@ makedepends=('gcc' 'make' 'nasm' 'autoconf' 'automake' 'gnu-which' 'mtools')
 install=mochiboot.install
 source=("git+https://github.com/iluxz/mochiboot.git#branch=v12.x"
         "mochiboot.conf"
-        "usr/bin/mochi-snapshot"
-        "usr/lib/initcpio/install/mochi-snapshot"
-        "usr/lib/initcpio/hooks/mochi-snapshot"
-        "usr/lib/systemd/system/mochi-boot-good.service")
+        "mochi-snapshot"
+        "mochi-snapshot.install"
+        "mochi-snapshot.hook"
+        "mochi-boot-good.service")
 sha256sums=('SKIP'
             'SKIP'
             'SKIP'
@@ -56,15 +56,15 @@ package() {
 
   # install mochi-snapshot CLI
   install -dm755 "$pkgdir/usr/bin"
-  install -m755 "$srcdir/usr/bin/mochi-snapshot" "$pkgdir/usr/bin/mochi-snapshot"
+  install -m755 "$srcdir/mochi-snapshot" "$pkgdir/usr/bin/mochi-snapshot"
 
   # install initramfs hooks
   install -dm755 "$pkgdir/usr/lib/initcpio/install"
   install -dm755 "$pkgdir/usr/lib/initcpio/hooks"
-  install -m644 "$srcdir/usr/lib/initcpio/install/mochi-snapshot" "$pkgdir/usr/lib/initcpio/install/mochi-snapshot"
-  install -m644 "$srcdir/usr/lib/initcpio/hooks/mochi-snapshot" "$pkgdir/usr/lib/initcpio/hooks/mochi-snapshot"
+  install -m644 "$srcdir/mochi-snapshot.install" "$pkgdir/usr/lib/initcpio/install/mochi-snapshot"
+  install -m644 "$srcdir/mochi-snapshot.hook" "$pkgdir/usr/lib/initcpio/hooks/mochi-snapshot"
 
   # install systemd services
   install -dm755 "$pkgdir/usr/lib/systemd/system"
-  install -m644 "$srcdir/usr/lib/systemd/system/mochi-boot-good.service" "$pkgdir/usr/lib/systemd/system/mochi-boot-good.service"
+  install -m644 "$srcdir/mochi-boot-good.service" "$pkgdir/usr/lib/systemd/system/mochi-boot-good.service"
 }
