@@ -5,9 +5,40 @@ import os
 import re
 import shutil
 import time
+import signal
+import sys
+import atexit
 from pathlib import Path
 
 CUSTOM_EXTRAS = {"steam"}
+
+_CLEANUP_TARGET = [None]
+
+def _unmount_all():
+    target = _CLEANUP_TARGET[0]
+    if not target or not os.path.ismount(target):
+        return
+    for mp in [f"{target}/var/cache", f"{target}/var", f"{target}/home", f"{target}/boot", target]:
+        subprocess.run(["umount", "-l", mp], capture_output=True, check=False, timeout=10)
+    subprocess.run(["umount", "-l", "/mnt/btrfs_tmp"], capture_output=True, check=False, timeout=10)
+    subprocess.run(["swapoff", "-a"], capture_output=True, check=False, timeout=10)
+
+# signal handlers registered at module level (main thread)
+# only if not in a daemon thread (TUI runs installer in thread)
+def _setup_signal_handlers():
+    old = {}
+    def handler(signum, frame):
+        _unmount_all()
+        sys.exit(128 + signum)
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            old[sig] = signal.signal(sig, handler)
+        except (ValueError, RuntimeError):
+            pass
+    return old
+
+_setup_signal_handlers()
+atexit.register(_unmount_all)
 
 _TOTAL_STEPS = 60
 _STEP_COUNT = [0]
@@ -35,7 +66,7 @@ def run(cmd, check=True, capture=False, timeout=None, input_data=None):
     return r
 
 
-def abortable_run(cmd, abort_flag, check=True, timeout=None):
+def abortable_run(cmd, abort_flag, check=True, timeout=None, log_fn=None):
     import select as _select
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     out_lines = []
@@ -60,6 +91,10 @@ def abortable_run(cmd, abort_flag, check=True, timeout=None):
             line = proc.stdout.readline()
             if line:
                 out_lines.append(line)
+                if log_fn:
+                    clean = line.rstrip()
+                    if clean:
+                        log_fn(f"[dim]{clean}[/]")
         if proc.poll() is not None:
             break
     for line in proc.stdout:
@@ -179,13 +214,14 @@ def setup_btrfs(root_part, target, lfn):
 def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", kernels=None, extra_pkgs=None, abort_flag=None):
     if kernels is None:
         kernels = ["linux"]
-    lfn("installing base system...")
 
     kernel_pkgs = []
     for k in kernels:
         kernel_pkgs.append(k)
         kernel_pkgs.append(k + "-headers")
 
+    # step 1: base system
+    lfn("installing base system...")
     base = [
         "base",
         *kernel_pkgs,
@@ -196,6 +232,9 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
         "sbctl",
         "zsh", "git", "flatpak",
     ]
+    abortable_run(["pacstrap", "-K", target] + base, abort_flag, timeout=900, log_fn=lfn)
+
+    # step 2: desktop environment
     de_pkgs = {
         "kde": ["plasma-desktop", "plasma-workspace", "kdeplasma-addons",
                 "kwin", "konsole", "dolphin", "kate", "gwenview",
@@ -207,6 +246,11 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
                      "wofi", "waybar", "dunst", "polkit-kde-agent",
                      "wl-clipboard", "slurp", "grim", "hyprpaper"],
     }
+    de_choice = de_pkgs.get(de, de_pkgs["kde"])
+    lfn(f"installing {de} desktop...")
+    abortable_run(["pacstrap", "-K", target] + de_choice, abort_flag, timeout=600, log_fn=lfn)
+
+    # step 3: greeter + bootloader + extras
     greeter_pkgs = {
         "sddm": ["sddm"],
         "gdm": ["gdm"],
@@ -219,8 +263,10 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
         "grub": ["grub"],
         "mochiboot": ["mochiboot"],
     }
-    pkgs = base + de_pkgs.get(de, de_pkgs["kde"]) + greeter_pkgs.get(greeter, greeter_pkgs["sddm"]) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
-    abortable_run(["pacstrap", "-K", target] + pkgs, abort_flag, timeout=900)
+    misc = greeter_pkgs.get(greeter, greeter_pkgs["sddm"]) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
+    if misc:
+        lfn("installing greeter, bootloader, and extras...")
+        abortable_run(["pacstrap", "-K", target] + misc, abort_flag, timeout=300, log_fn=lfn)
 
 
 def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
@@ -508,6 +554,10 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         if abort_flag and abort_flag():
             raise RuntimeError("installation aborted")
         log_fn("starting mochios installation...")
+
+        # pre-flight: unmount any leftover mounts from failed installs
+        _unmount_all()
+
         disk = select_disk(config.get("disk"))
         bios_part, efi_part, swap_part, root_part_p = partition_disk(disk, log_fn)
         mounts_cleanup_needed = True
@@ -520,6 +570,7 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
 
         if abort_flag and abort_flag():
             raise RuntimeError("installation aborted")
+        _CLEANUP_TARGET[0] = target
         setup_btrfs(root_part_p, target, log_fn)
 
         efi_uuid = get_uuid(efi_part)
@@ -603,6 +654,7 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         run(["swapoff", swap_part], check=False)
         log_fn("installation complete!")
         mounts_cleanup_needed = False
+        _CLEANUP_TARGET[0] = None
         return True
 
     except subprocess.CalledProcessError as e:

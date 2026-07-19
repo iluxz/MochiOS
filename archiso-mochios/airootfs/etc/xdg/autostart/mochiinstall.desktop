@@ -7,3 +7,5 @@ Icon=system-software-install
 Terminal=false
 Categories=System;
 X-KDE-Authorize=true
+X-KDE-autostart-phase=3
+X-KDE-StartupNotify=false

@@ -526,7 +526,10 @@ class ProgressScreen(Screen):
             self.log_widget.write("[yellow]aborting after current step...[/]")
 
     def action_quit(self) -> None:
-        pass
+        self._abort = True
+        self.log_widget.write("[yellow]exiting... unmounting any filesystems[/]")
+        from installer import _unmount_all
+        _unmount_all()
 
 
 class MochiInstallApp(App):

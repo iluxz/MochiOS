@@ -5,3 +5,4 @@ Comment=Remove discover from the taskbar after plasma loads
 Exec=/usr/lib/mochiinstall/nuke-discover.sh
 Terminal=false
 X-KDE-Authorize=true
+X-KDE-autostart-phase=3
