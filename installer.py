@@ -343,7 +343,7 @@ def install_limine(target, disk, root_uuid, lfn, ch, kernels=None):
         config_lines.append(f":{label}")
         config_lines.append("    PROTOCOL=linux")
         config_lines.append(f"    KERNEL_PATH={vmlinuz}")
-        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw quiet loglevel=3")
+        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4")
         config_lines.append("")
 
     config = "\n".join(config_lines)
@@ -418,12 +418,12 @@ def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None):
         config_lines.append(f":{label}")
         config_lines.append("    PROTOCOL=linux")
         config_lines.append(f"    KERNEL_PATH={vmlinuz}")
-        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw quiet loglevel=3")
+        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4")
         config_lines.append("")
     config_lines.append(":MOCHIOS (recovery mode)")
     config_lines.append("    PROTOCOL=linux")
     config_lines.append(f"    KERNEL_PATH=/boot/vmlinuz-{kernels[0]}")
-    config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw quiet loglevel=3 mochi.recovery")
+    config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4 mochi.recovery")
     config_lines.append("")
 
     config = "\n".join(config_lines)

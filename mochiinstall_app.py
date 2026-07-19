@@ -155,6 +155,10 @@ class GuidedScreen(Screen):
             pass
 
     def _push_next(self) -> bool:
+        if self.step == 1 and not self.config.get("disk"):
+            hint = self.query_one("#disk_hint", Label) if self.body.query("#disk_hint") else None
+            if hint: hint.update("[red]select a disk first![/]")
+            return False
         if self.step == 6:
             pw = self.config.get("password", "")
             pw_c = self.config.get("password_confirm", "")
@@ -194,6 +198,14 @@ class GuidedScreen(Screen):
     def action_refresh_disks(self) -> None:
         if self.step == 1:
             self.render_step()
+
+    def on_selection_list_selection_toggled(self, event: SelectionList.SelectionToggled) -> None:
+        if self.step == 1:
+            sel = self.query_one("#disk_list", SelectionList)
+            has_disk = bool(sel.selected)
+            hint = self.query_one("#disk_hint", Label)
+            hint.update("")
+            self._nav(can_next=has_disk, next_label="next")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if self.step == 0:
@@ -273,10 +285,12 @@ class GuidedScreen(Screen):
             self._nav(can_next=False, next_label="retry [r]")
         else:
             preselected = self.config.get("disk", "")
+            has_disk = bool(preselected)
             kids += [
+                Label("", id="disk_hint"),
                 SelectionList(*[(d, v, v == preselected) for d, v in disks], id="disk_list"),
             ]
-            self._nav(next_label="next")
+            self._nav(can_next=has_disk, next_label="next")
         self.body.mount(self._wrap(*kids))
 
     def step_fs(self) -> None:
