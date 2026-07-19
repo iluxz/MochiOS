@@ -5,9 +5,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  RELEASE_TAG: nightly
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -72,6 +69,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    strategy:
+      matrix:
+        channel:
+          - tag: nightly
+            title: MochiOS Nightly
+            prerelease: true
+          - tag: stable
+            title: MochiOS
+            prerelease: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v7
@@ -79,10 +85,13 @@ jobs:
           name: mochios-iso
           path: /tmp/iso
 
-      - name: publish release
+      - name: publish ${{ matrix.channel.tag }} release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ matrix.channel.tag }}
+          RELEASE_TITLE: ${{ matrix.channel.title }}
+          PRERELEASE: ${{ matrix.channel.prerelease }}
         run: |
           cd /tmp/iso
           iso=$(ls *.iso 2>/dev/null | head -1)
@@ -100,6 +109,9 @@ jobs:
           sha256sum "$iso" > /tmp/iso/SHA256SUMS.txt
           echo "" >> /tmp/iso/SHA256SUMS.txt
 
+          prerelease_flag=""
+          [ "$PRERELEASE" = "true" ] && prerelease_flag="--prerelease"
+
           if [ "$size" -ge "$limit" ]; then
             echo "iso too large for github release ($size >= $limit), splitting..."
             split -b 2000M "$iso" "${iso}.part."
@@ -107,10 +119,10 @@ jobs:
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
             gh release create "$RELEASE_TAG" \
               "${iso}.part."* join-iso.bat join-iso.sh SHA256SUMS.txt \
-              --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+              --title "$RELEASE_TITLE" --notes "auto-built from main" $prerelease_flag
           else
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
             gh release create "$RELEASE_TAG" \
               "$iso" join-iso.bat join-iso.sh SHA256SUMS.txt \
-              --title "MochiOS Nightly" --notes "auto-built from main" --prerelease
+              --title "$RELEASE_TITLE" --notes "auto-built from main" $prerelease_flag
           fi
