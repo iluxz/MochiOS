@@ -18,7 +18,7 @@ jobs:
       - name: install deps
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm archiso base-devel go git sudo fakeroot clang lld
+          pacman -S --noconfirm archiso base-devel go git sudo fakeroot clang lld llvm
 
       - name: setup build user
         run: |
