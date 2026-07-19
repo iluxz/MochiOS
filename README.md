@@ -84,7 +84,7 @@ mochios uses a btrfs-based a/b root scheme. two subvolumes (`root_a`, `root_b`) 
 ### from iso
 
 1. download the latest iso from [releases](https://github.com/iluxz/MochiOS/releases)
-2. write to usb: `dd if=mochios-*.iso of=/dev/sdX bs=4M status=progress`
+2. write to usb: use rufus if you're on windows, balena etcher if you're on linux
 3. boot from usb
 4. run the **mochiinstall** gui (desktop) or `mochiinstall --tui` (terminal)
 5. follow the wizard: keyboard → disk → de → greeter → user → install
