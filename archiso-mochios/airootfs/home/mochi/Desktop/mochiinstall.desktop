@@ -6,4 +6,5 @@ Exec=mochiinstall
 Icon=system-software-install
 Terminal=false
 Categories=System;
+X-KDE-Authorize=true
 

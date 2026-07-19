@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 import os, sys
 
+LOCK = "/tmp/mochiinstall.lock"
+if os.path.exists(LOCK):
+    print("mochiinstall already running")
+    sys.exit(0)
+
+open(LOCK, "w").write(str(os.getpid()))
+
 sys.path.insert(0, '/usr/lib/mochiinstall')
 
 args = list(sys.argv)
@@ -10,18 +17,22 @@ for flag in ('--nightly', '--tui'):
     if flag in args:
         args.remove(flag)
 
-if os.geteuid() != 0:
-    os.execvp("sudo", ["sudo", "-E", sys.executable] + sys.argv)
-elif tui:
-    from mochiinstall_app import main as tui_main
-    tui_main()
-else:
-    try:
-        from mochiinstall_gui import main as gui_main
-        sys.argv = args
-        if nightly:
-            sys.argv.append('--nightly')
-        gui_main()
-    except ImportError:
+try:
+    if os.geteuid() != 0:
+        os.execvp("sudo", ["sudo", "-E", sys.executable] + sys.argv)
+    elif tui:
         from mochiinstall_app import main as tui_main
         tui_main()
+    else:
+        try:
+            from mochiinstall_gui import main as gui_main
+            sys.argv = args
+            if nightly:
+                sys.argv.append('--nightly')
+            gui_main()
+        except ImportError:
+            from mochiinstall_app import main as tui_main
+            tui_main()
+finally:
+    if os.path.exists(LOCK):
+        os.unlink(LOCK)
