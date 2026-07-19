@@ -7,21 +7,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-nightly:
+    if: github.ref_name == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     container:
       image: archlinux/archlinux:latest
       options: --privileged
-    strategy:
-      matrix:
-        variant:
-          - channel: nightly
-            nightly: "true"
-          - channel: stable
-            nightly: "false"
-    if: |
-      (matrix.variant.channel == 'nightly' && (github.ref_name == 'main' || github.event_name == 'workflow_dispatch')) ||
-      (matrix.variant.channel == 'stable' && startsWith(github.ref, 'refs/tags/v'))
     steps:
       - name: install deps
         run: |
@@ -65,47 +56,94 @@ jobs:
           WORK_DIR=/tmp/mochios-work \
           GNUPGHOME=/home/mochi/.mochios-gnupg \
           SIGN_KEY=ci@mochios.dev \
-          NIGHTLY=${{ matrix.variant.nightly }} \
+          NIGHTLY=true \
           bash /tmp/mochios/build.sh 2>&1
 
       - name: upload iso
         uses: actions/upload-artifact@v7
         with:
-          name: mochios-iso-${{ matrix.variant.channel }}
+          name: mochios-iso-nightly
           path: /tmp/mochios/out/*.iso
           retention-days: 30
 
-  release:
-    needs: build
+  build-stable:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux/archlinux:latest
+      options: --privileged
+    steps:
+      - name: install deps
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm archiso base-devel go git sudo fakeroot clang lld llvm nasm mtools
+
+      - name: setup build user
+        run: |
+          useradd -m mochi
+          echo "mochi ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          mkdir -p /home/mochi/.mochios-gnupg
+          chown -R mochi:mochi /home/mochi
+
+      - name: clone repo
+        run: |
+          cd /tmp
+          git clone https://github.com/iluxz/MochiOS.git mochios
+          chown -R mochi:mochi /tmp/mochios
+
+      - name: create signing key
+        run: |
+          mkdir -p /home/mochi/.mochios-gnupg /tmp/mochios/repo/pubkey
+          chown -R mochi:mochi /home/mochi/.mochios-gnupg
+          cd /tmp/mochios
+          printf 'Key-Type: RSA\nKey-Length: 2048\nName-Real: MochiOS CI\nName-Email: ci@mochios.dev\nExpire-Date: 0\n%%no-protection\n' | gpg --homedir /home/mochi/.mochios-gnupg --batch --gen-key 2>&1
+          gpg --homedir /home/mochi/.mochios-gnupg --export --armor ci@mochios.dev > repo/pubkey/mochios-key.pub
+          chmod 644 /home/mochi/.mochios-gnupg/pubring.kbx /home/mochi/.mochios-gnupg/trustdb.gpg 2>/dev/null || true
+
+      - name: create secure boot keys
+        run: |
+          mkdir -p /tmp/mochios/secure-boot
+          cd /tmp/mochios/secure-boot
+          openssl req -x509 -newkey rsa:2048 -keyout db.key -out db.crt \
+            -days 365 -nodes -subj "/CN=MochiOS CI/"
+          chmod 600 db.key
+
+      - name: build packages + iso
+        run: |
+          mkdir -p /tmp/mochios-work /tmp/mochios/out
+          MOCHIOS_DIR=/tmp/mochios \
+          WORK_DIR=/tmp/mochios-work \
+          GNUPGHOME=/home/mochi/.mochios-gnupg \
+          SIGN_KEY=ci@mochios.dev \
+          NIGHTLY=false \
+          bash /tmp/mochios/build.sh 2>&1
+
+      - name: upload iso
+        uses: actions/upload-artifact@v7
+        with:
+          name: mochios-iso-stable
+          path: /tmp/mochios/out/*.iso
+          retention-days: 30
+
+  release-nightly:
+    needs: build-nightly
+    if: github.ref_name == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    strategy:
-      matrix:
-        channel:
-          - tag: nightly
-            title: MochiOS Nightly
-            prerelease: true
-          - tag: stable
-            title: MochiOS
-            prerelease: false
-    if: |
-      (matrix.channel.tag == 'nightly' && (github.ref_name == 'main' || github.event_name == 'workflow_dispatch')) ||
-      (matrix.channel.tag == 'stable' && startsWith(github.ref, 'refs/tags/v'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v7
         with:
-          name: mochios-iso-${{ matrix.channel.tag }}
+          name: mochios-iso-nightly
           path: /tmp/iso
 
-      - name: publish ${{ matrix.channel.tag }} release
+      - name: publish nightly release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ matrix.channel.tag }}
-          RELEASE_TITLE: ${{ matrix.channel.title }}
-          PRERELEASE: ${{ matrix.channel.prerelease }}
+          RELEASE_TAG: nightly
+          RELEASE_TITLE: MochiOS Nightly
         run: |
           cd /tmp/iso
           iso=$(ls *.iso 2>/dev/null | head -1)
@@ -115,16 +153,11 @@ jobs:
           limit=2147483648
           echo "iso size: $size bytes ($(( size / 1024 / 1024 )) MB)"
 
-          # copy join scripts for split ISO
           cp "$GITHUB_WORKSPACE/join-iso.bat" /tmp/iso/ 2>/dev/null || true
           cp "$GITHUB_WORKSPACE/join-iso.sh" /tmp/iso/ 2>/dev/null || true
 
-          # generate checksum for integrity verification
           sha256sum "$iso" > /tmp/iso/SHA256SUMS.txt
           echo "" >> /tmp/iso/SHA256SUMS.txt
-
-          prerelease_flag=""
-          [ "$PRERELEASE" = "true" ] && prerelease_flag="--prerelease"
 
           if [ "$size" -ge "$limit" ]; then
             echo "iso too large for github release ($size >= $limit), splitting..."
@@ -133,10 +166,59 @@ jobs:
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
             gh release create "$RELEASE_TAG" \
               "${iso}.part."* join-iso.bat join-iso.sh SHA256SUMS.txt \
-              --title "$RELEASE_TITLE" --notes "auto-built from main" $prerelease_flag
+              --title "$RELEASE_TITLE" --notes "auto-built from main" --prerelease
           else
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
             gh release create "$RELEASE_TAG" \
               "$iso" join-iso.bat join-iso.sh SHA256SUMS.txt \
-              --title "$RELEASE_TITLE" --notes "auto-built from main" $prerelease_flag
+              --title "$RELEASE_TITLE" --notes "auto-built from main" --prerelease
+          fi
+
+  release-stable:
+    needs: build-stable
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v7
+        with:
+          name: mochios-iso-stable
+          path: /tmp/iso
+
+      - name: publish stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: stable
+          RELEASE_TITLE: MochiOS
+        run: |
+          cd /tmp/iso
+          iso=$(ls *.iso 2>/dev/null | head -1)
+          if [ -z "$iso" ]; then echo "no iso found"; exit 1; fi
+
+          size=$(stat -c%s "$iso")
+          limit=2147483648
+          echo "iso size: $size bytes ($(( size / 1024 / 1024 )) MB)"
+
+          cp "$GITHUB_WORKSPACE/join-iso.bat" /tmp/iso/ 2>/dev/null || true
+          cp "$GITHUB_WORKSPACE/join-iso.sh" /tmp/iso/ 2>/dev/null || true
+
+          sha256sum "$iso" > /tmp/iso/SHA256SUMS.txt
+          echo "" >> /tmp/iso/SHA256SUMS.txt
+
+          if [ "$size" -ge "$limit" ]; then
+            echo "iso too large for github release ($size >= $limit), splitting..."
+            split -b 2000M "$iso" "${iso}.part."
+            rm -f "$iso"
+            gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
+            gh release create "$RELEASE_TAG" \
+              "${iso}.part."* join-iso.bat join-iso.sh SHA256SUMS.txt \
+              --title "$RELEASE_TITLE" --notes "auto-built from main"
+          else
+            gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
+            gh release create "$RELEASE_TAG" \
+              "$iso" join-iso.bat join-iso.sh SHA256SUMS.txt \
+              --title "$RELEASE_TITLE" --notes "auto-built from main"
           fi
