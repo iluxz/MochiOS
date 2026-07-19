@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MochiOS — arch-based linux distro</title>
+<meta name="description" content="MochiOS is an Arch Linux-based distribution with atomic A/B updates, btrfs snapshots, and a soft purple vibe.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0d0815;
+    color: #e0d0f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    line-height: 1.6;
+  }
+  .container { max-width: 680px; text-align: center; }
+  h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #c8a0f0, #7a3cb0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+  .subtitle {
+    font-size: 1.1rem;
+    color: #705090;
+    margin-bottom: 2.5rem;
+  }
+  .tagline {
+    font-size: 0.95rem;
+    color: #b090d0;
+    margin-bottom: 2rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+  }
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: #7a3cb0;
+    color: #fff;
+    border: none;
+  }
+  .btn-primary:hover { background: #8a4cc0; transform: translateY(-1px); }
+  .btn-secondary {
+    background: transparent;
+    color: #c8a0f0;
+    border: 1px solid #3a2a5e;
+  }
+  .btn-secondary:hover { background: #1e1230; border-color: #5a3a7e; }
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 3rem;
+    text-align: left;
+  }
+  .feature {
+    background: #150d1e;
+    border: 1px solid #2a1a3e;
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+  .feature h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9664c8;
+    margin-bottom: 0.4rem;
+  }
+  .feature p {
+    font-size: 0.85rem;
+    color: #8060a0;
+  }
+  .footer {
+    font-size: 0.8rem;
+    color: #403060;
+    margin-top: 1rem;
+  }
+  .footer a { color: #604080; text-decoration: none; }
+  .footer a:hover { color: #8060a0; }
+  .badge { display: inline-block; margin: 0 0.25rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>MochiOS</h1>
+  <p class="subtitle">arch-based · atomic updates · purple vibe</p>
+  <p class="tagline">
+    A Linux distribution that actually works out of the box.
+    Pick a desktop, install, and you're in. No essays required.
+  </p>
+
+  <div class="links">
+    <a href="https://github.com/iluxz/MochiOS" class="btn-primary">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+    <a href="https://github.com/iluxz/MochiOS/releases" class="btn-secondary">Download ISO</a>
+    <a href="https://github.com/iluxz/mochiboot" class="btn-secondary">MochiBoot</a>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <h3>Atomic Updates</h3>
+      <p>A/B root partitions via abroot — update flips a flag, boot into the new side.</p>
+    </div>
+    <div class="feature">
+      <h3>Btrfs Snapshots</h3>
+      <p>Every major operation snapshots your root. Rollback in the bootloader.</p>
+    </div>
+    <div class="feature">
+      <h3>MochiBoot</h3>
+      <p>Limine fork with boot counters, recovery auto-detect, and snapshot picker.</p>
+    </div>
+    <div class="feature">
+      <h3>Mochi CLI</h3>
+      <p><code>mochi beat firefox</code> instead of <code>sudo pacman -S firefox</code>. Simple.</p>
+    </div>
+    <div class="feature">
+      <h3>DE Choice</h3>
+      <p>KDE Plasma, GNOME, or Hyprland — pick at install time.</p>
+    </div>
+    <div class="feature">
+      <h3>Greeter Choice</h3>
+      <p>SDDM, GDM, LightDM, Ly, or Greetd — decoupled from your DE.</p>
+    </div>
+  </div>
+
+  <p class="footer">
+    <a href="https://github.com/iluxz/MochiOS">github.com/iluxz/MochiOS</a>
+    &nbsp;·&nbsp;
+    <a href="LICENSE">GPL v3</a>
+  </p>
+</div>
+</body>
+</html>
