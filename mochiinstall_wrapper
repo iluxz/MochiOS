@@ -15,8 +15,14 @@ if os.geteuid() != 0:
 
 LOCK = "/tmp/mochiinstall.lock"
 if os.path.exists(LOCK):
-    print("mochiinstall already running")
-    sys.exit(0)
+    try:
+        pid = int(open(LOCK).read().strip())
+        os.kill(pid, 0)  # check if process exists
+        print("mochiinstall already running")
+        sys.exit(0)
+    except (ValueError, ProcessLookupError):
+        pass  # stale lock, remove it
+    os.unlink(LOCK)
 
 open(LOCK, "w").write(str(os.getpid()))
 try:
