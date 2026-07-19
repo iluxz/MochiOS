@@ -16,7 +16,7 @@
 
 mochios is a linux distribution built on arch linux that actually works out of the box. no 3-hour install guides, no fighting with config files at 2am. pick a desktop, install, and boom — you're in.
 
-powered by **mochiboot** (a limine fork), **abroot** (a/b atomic updates on btrfs), and a custom **mochi** cli that wraps pacman so you don't have to remember flags.
+uses **mochiboot** (a limine fork), **abroot** (a/b atomic updates on btrfs), and a custom **mochi** cli that wraps pacman so you don't have to remember flags.
 
 ## features
 
@@ -26,7 +26,7 @@ powered by **mochiboot** (a limine fork), **abroot** (a/b atomic updates on btrf
 | **btrfs snapshots** | every major operation snapshots your root. snapshot picker in the bootloader if things go sideways |
 | **mochiboot bootloader** | custom branded limine fork with boot counters, recovery auto-detect, and snapshot picker |
 | **mochi cli** | `mochi beat firefox` instead of `sudo pacman -S firefox`. native `remove`, `update`, `search`, `rollback`, `snapshot` commands |
-| **gui installer** | friendly pyqt6 wizard — pick your de, greeter, disk layout, done |
+| **gui installer** | pyqt6 wizard — pick your de, greeter, disk layout, done |
 | **tui installer** | textual-based fallback if you're not running a desktop |
 | **multiple des** | kde plasma, gnome, hyprland — pick at install time |
 | **greeter choice** | sddm, gdm, lightdm, ly, or greetd — decoupled from your de choice |
@@ -42,7 +42,7 @@ all shipped with wireplumber/pipewire for audio.
 
 ## greeters
 
-the login screen is fully decoupled from your desktop choice:
+you pick the login screen separately from your desktop:
 
 - **sddm** (default for kde)
 - **gdm** (default for gnome)
@@ -52,7 +52,7 @@ the login screen is fully decoupled from your desktop choice:
 
 ## mochi cli
 
-the `mochi` command is your one-stop shop for package management:
+the `mochi` command is what you use to actually do stuff with packages:
 
 ```bash
 mochi beat <package>   # install a package (wraps pacman -S)
@@ -122,7 +122,7 @@ environment variables:
 
 ## package repos
 
-mochios uses arch linux repositories plus a custom `[mochi]` overlay repo for curated packages:
+mochios uses arch linux repositories plus a custom `[mochi]` overlay repo with extra packages:
 
 ```bash
 mochi repo add    # adds [mochi] to /etc/pacman.conf
