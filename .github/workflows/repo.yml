@@ -69,7 +69,7 @@ jobs:
         run: |
           cd pkgbuilds/mochiboot
           pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
-          tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' PKGBUILD
+          tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' *
           sudo -u builder makepkg -cf --noconfirm --nodeps
 
       - name: Create repo

@@ -54,7 +54,7 @@ cp "$MOCHIOS_DIR/pkgbuilds/mochiinstall"/mochiinstall-[0-9]*.pkg.tar.zst "$REPO_
 echo "==> rebuilding mochiboot pkg..."
 cd "$MOCHIOS_DIR/pkgbuilds/mochiboot"
 pkgver=$(_get_pkgver PKGBUILD)
-tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' PKGBUILD
+tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' *
 sudo -u mochi makepkg -cf --noconfirm --nodeps
 cp "$MOCHIOS_DIR/pkgbuilds/mochiboot"/mochiboot-[0-9]*.pkg.tar.zst "$REPO_DIR/os/x86_64/"
 
