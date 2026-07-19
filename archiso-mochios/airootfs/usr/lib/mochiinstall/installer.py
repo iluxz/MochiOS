@@ -156,9 +156,9 @@ def setup_btrfs(root_part, target, lfn):
     os.makedirs(f"{target}/boot", exist_ok=True)
     os.makedirs(f"{target}/home", exist_ok=True)
     os.makedirs(f"{target}/var", exist_ok=True)
-    os.makedirs(f"{target}/var/cache", exist_ok=True)
     run(["mount", "-o", "compress=zstd,subvol=home", root_part, f"{target}/home"])
     run(["mount", "-o", "compress=zstd,subvol=var", root_part, f"{target}/var"])
+    os.makedirs(f"{target}/var/cache", exist_ok=True)
     run(["mount", "-o", "compress=zstd,subvol=cache", root_part, f"{target}/var/cache"])
 
 
@@ -219,8 +219,8 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     locale = t / "etc/locale.gen"
     locale.write_text(locale.read_text().replace("#en_US.UTF-8 UTF-8", "en_US.UTF-8 UTF-8"))
 
-    def ch(cmd, to=120, check=True):
-        return run(["arch-chroot", target] + cmd, check=check, timeout=to)
+    def ch(cmd, to=120, check=True, input_data=None):
+        return run(["arch-chroot", target] + cmd, check=check, timeout=to, input_data=input_data)
 
     ch(["locale-gen"])
     ch(["ln", "-sf", "/usr/share/zoneinfo/UTC", "/etc/localtime"])
@@ -256,8 +256,9 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         pmconf.write_text(pmtext)
 
     lfn(f"creating user {username}...")
+    ch(["userdel", "-rf", username], check=False)
     ch(["useradd", "-m", "-G", "wheel,storage,power,audio,video", "-s", "/bin/zsh", username])
-    run(["arch-chroot", target, "chpasswd"], input_data=f"{username}:{password}\nroot:{password}\n", timeout=30)
+    ch(["chpasswd"], input_data=f"{username}:{password}\nroot:{password}\n", to=30)
 
     (t / "etc/sudoers.d/10-mochi").write_text("%wheel ALL=(ALL:ALL) ALL\n")
 
