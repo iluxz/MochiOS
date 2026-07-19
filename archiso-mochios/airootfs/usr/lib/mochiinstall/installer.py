@@ -162,7 +162,7 @@ def setup_btrfs(root_part, target, lfn):
     run(["mount", "-o", "compress=zstd,subvol=cache", root_part, f"{target}/var/cache"])
 
 
-def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extra_pkgs=None, abort_flag=None):
+def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", kernels=None, extra_pkgs=None, abort_flag=None):
     if kernels is None:
         kernels = ["linux"]
     lfn("installing base system...")
@@ -185,17 +185,27 @@ def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extr
     de_pkgs = {
         "kde": ["plasma-desktop", "plasma-workspace", "kdeplasma-addons",
                 "kwin", "konsole", "dolphin", "kate", "gwenview",
-                "sddm", "kwallet-pam", "breeze", "breeze-gtk",
+                "kwallet-pam", "breeze", "breeze-gtk",
                 "pipewire", "pipewire-pulse", "wireplumber", "kpipewire",
                 "plasma-nm"],
-        "gnome": ["gnome", "gnome-extra", "gdm"],
-        "none": [],
+        "gnome": ["gnome", "gnome-extra"],
+        "hyprland": ["hyprland", "kitty", "xdg-desktop-portal-hyprland",
+                     "wofi", "waybar", "dunst", "polkit-kde-agent",
+                     "wl-clipboard", "slurp", "grim", "hyprpaper"],
+    }
+    greeter_pkgs = {
+        "sddm": ["sddm"],
+        "gdm": ["gdm"],
+        "lightdm": ["lightdm", "lightdm-gtk-greeter"],
+        "ly": ["ly"],
+        "greetd": ["greetd", "greetd-tuigreet"],
     }
     bl_pkgs = {
         "limine": ["limine"],
         "grub": ["grub"],
+        "mochiboot": ["mochiboot"],
     }
-    pkgs = base + de_pkgs.get(de, []) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
+    pkgs = base + de_pkgs.get(de, de_pkgs["kde"]) + greeter_pkgs.get(greeter, greeter_pkgs["sddm"]) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
     abortable_run(["pacstrap", "-K", target] + pkgs, abort_flag, timeout=900)
 
 
@@ -204,6 +214,7 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     username = config.get("username", "mochi")
     password = config.get("password", "mochi")
     de = config.get("de", "kde")
+    greeter = config.get("greeter", "")
     bootloader = config.get("bootloader", "limine")
     kernels = config.get("kernels", ["linux"])
     disk = config.get("disk", "")
@@ -265,9 +276,8 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     ch(["systemctl", "enable", "NetworkManager"])
     ch(["systemctl", "enable", "sshd"])
 
-    dm = "sddm" if de == "kde" else "gdm" if de == "gnome" else None
-    if dm:
-        ch(["systemctl", "enable", dm])
+    if greeter and greeter != "none":
+        ch(["systemctl", "enable", greeter])
         ch(["systemctl", "set-default", "graphical.target"])
 
     lfn("importing mochios signing key...")
@@ -286,6 +296,8 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         install_limine(target, disk, root_uuid, lfn, ch, kernels=kernels)
     elif bootloader == "grub":
         install_grub(target, disk, root_uuid, lfn, ch, kernels=kernels)
+    elif bootloader == "mochiboot":
+        install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=kernels)
 
     lfn("signing boot files with sbctl...")
     keydir = t / "var/lib/sbctl/keys/db"
@@ -301,6 +313,8 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         sign_targets += ["/boot/limine/limine-bios.sys", "/boot/EFI/BOOT/BOOTX64.EFI"]
     elif bootloader == "grub":
         sign_targets += ["/boot/EFI/BOOT/BOOTX64.EFI"]
+    elif bootloader == "mochiboot":
+        sign_targets += ["/boot/mochiboot/limine-bios.sys", "/boot/EFI/BOOT/BOOTX64.EFI"]
     signed = 0
     for efifile in sign_targets:
         efipath = t / efifile.lstrip("/")
@@ -382,6 +396,85 @@ def install_grub(target, disk, root_uuid, lfn, ch, kernels=None):
     ch(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
 
 
+def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None):
+    if kernels is None:
+        kernels = ["linux"]
+    lfn("installing mochiboot...")
+
+    config_lines = [
+        "TIMEOUT=5",
+        "VERBOSE=no",
+        "GRAPHICS=yes",
+        "",
+        "WALLPAPER=boot:///mochiboot/dark.png",
+        "WALLPAPER_STYLE=stretched",
+        "",
+        "INTERFACE_BRANDING=MochiBoot",
+        "INTERFACE_BRANDING_COLOUR=00aaaa",
+        "",
+        "TERM_BACKGROUND=00101a80",
+        "TERM_FOREGROUND=cdd6f4",
+        "TERM_PALETTE=45475a;585b70;f38ba8;a6e3a1;89b4fa;f5c2e7;94e2d5;bac2de",
+        "TERM_PALETTE_BRIGHT=585b70;6c7086;f38ba8;a6e3a1;89b4fa;f5c2e7;94e2d5;a6adc8",
+        "TERM_MARGIN=2",
+        "TERM_MARGIN_GRADIENT=0",
+        "",
+        "MOCHIBOOT_RECOVERY_ENTRY=MOCHIOS (recovery mode)",
+        "",
+    ]
+    for k in kernels:
+        vmlinuz = f"/boot/vmlinuz-{k}"
+        label = f"MOCHIOS ({k})" if len(kernels) > 1 else "MOCHIOS"
+        config_lines.append(f":{label}")
+        config_lines.append("    PROTOCOL=linux")
+        config_lines.append(f"    KERNEL_PATH={vmlinuz}")
+        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4")
+        config_lines.append("")
+    config_lines.append(":MOCHIOS (recovery mode)")
+    config_lines.append("    PROTOCOL=linux")
+    config_lines.append(f"    KERNEL_PATH=/boot/vmlinuz-{kernels[0]}")
+    config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4 mochi.recovery")
+    config_lines.append("")
+
+    config = "\n".join(config_lines)
+
+    lfn("installing mochiboot (bios)...")
+    mb_dir = Path(target) / "boot" / "mochiboot"
+    mb_dir.mkdir(parents=True, exist_ok=True)
+    (mb_dir / "mochiboot.conf").write_text(config)
+    ch(["cp", "/usr/share/mochiboot/limine-bios.sys", "/boot/mochiboot/limine-bios.sys"], to=30)
+    ch(["mochiboot", "bios-install", disk], to=30, check=False)
+
+    lfn("installing mochiboot (uefi)...")
+    efi_dir = Path(target) / "boot" / "EFI" / "BOOT"
+    efi_dir.mkdir(parents=True, exist_ok=True)
+    (efi_dir / "mochiboot.conf").write_text(config)
+    ch(["cp", "/usr/share/mochiboot/BOOTX64.EFI", "/boot/EFI/BOOT/BOOTX64.EFI"], to=30)
+
+    lfn("installing mochiboot (alt path)...")
+    mochi_efi = Path(target) / "boot" / "EFI" / "mochi"
+    mochi_efi.mkdir(parents=True, exist_ok=True)
+    (mochi_efi / "mochiboot.conf").write_text(config)
+    ch(["cp", "/usr/share/mochiboot/BOOTX64.EFI", "/boot/EFI/mochi/mochiboot.efi"], to=30)
+
+    lfn("installing mochi-splash...")
+    if os.path.exists("/usr/share/mochi-splash/mochi-splash.efi"):
+        ch(["cp", "/usr/share/mochi-splash/mochi-splash.efi", "/boot/EFI/mochi/mochi-splash.efi"], to=10)
+        lfn("registering mochi-splash boot entry...")
+        try:
+            disk_clean = re.sub(r'\d+$', '', disk.replace('/dev/', ''))
+            ch(["efibootmgr", "-c", "-d", disk_clean,
+                "-p", "1", "-L", "mochios", "-l", "\\EFI\\mochi\\mochi-splash.efi"], to=10, check=False)
+        except Exception:
+            lfn("  [yellow]efibootmgr not available, skipping[/]")
+
+    lfn("installing mochi wallpaper...")
+    for src in ["/usr/share/backgrounds/mochios/dark.png", "/usr/share/wallpapers/mochios/contents/images/1920x1080.png"]:
+        if Path(target + src).exists():
+            ch(["cp", src, "/boot/mochiboot/dark.png"], to=10)
+            break
+
+
 def cleanup_mounts(target):
     import subprocess as _sp
     for mp in [f"{target}/var/cache", f"{target}/var", f"{target}/home", f"{target}/boot", target]:
@@ -425,7 +518,7 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         repo_extra = [p for p in extra_all if isinstance(p, str) and p not in CUSTOM_EXTRAS]
         custom_extra = [p for p in extra_all if isinstance(p, str) and p in CUSTOM_EXTRAS]
 
-        pacstrap_base(target, log_fn, de=config.get("de", "kde"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag)
+        pacstrap_base(target, log_fn, de=config.get("de", "kde"), greeter=config.get("greeter", "sddm"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag)
 
         log_fn("relaxing SigLevel for custom packages...")
         pmconf_path = f"{target}/etc/pacman.conf"

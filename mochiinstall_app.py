@@ -94,7 +94,7 @@ class GuidedScreen(Screen):
     def __init__(self):
         super().__init__()
         self.step = 0
-        self.config = {"de": "kde", "disk": "", "filesystem": "btrfs", "bootloader": "limine", "kernels": ["linux"], "hostname": "mochios", "username": "mochi", "password": "mochi", "extra_pkgs": []}
+        self.config = {"de": "kde", "greeter": "sddm", "disk": "", "filesystem": "btrfs", "bootloader": "limine", "kernels": ["linux"], "hostname": "mochios", "username": "mochi", "password": "mochi", "extra_pkgs": []}
 
     def compose(self) -> ComposeResult:
         yield Container(
@@ -329,11 +329,13 @@ class GuidedScreen(Screen):
     def step_de_boot(self) -> None:
         de = self.config.get("de", "kde")
         bl = self.config.get("bootloader", "limine")
+        gr = self.config.get("greeter", "sddm")
         self.body.mount(self._wrap(
             Static("[bold]desktop environment[/]"),
             SelectionList(
                 ("kde plasma", "kde", de == "kde"),
                 ("gnome", "gnome", de == "gnome"),
+                ("hyprland", "hyprland", de == "hyprland"),
                 id="de"
             ),
             Static(""),
@@ -343,6 +345,16 @@ class GuidedScreen(Screen):
                 ("grub", "grub", bl == "grub"),
                 ("mochiboot", "mochiboot", bl == "mochiboot"),
                 id="bootloader"
+            ),
+            Static(""),
+            Static("[bold]greeter / display manager[/]"),
+            SelectionList(
+                ("sddm", "sddm", gr == "sddm"),
+                ("gdm", "gdm", gr == "gdm"),
+                ("lightdm", "lightdm", gr == "lightdm"),
+                ("ly", "ly", gr == "ly"),
+                ("greetd", "greetd", gr == "greetd"),
+                id="greeter"
             ),
         ))
         self._nav()
@@ -368,6 +380,7 @@ class GuidedScreen(Screen):
             Static(f"  hostname:    [white]{c['hostname']}[/]"),
             Static(f"  disk:        [red]{c['disk'] or 'NOT SELECTED'}[/] {'[red bold](required!)' if not disk_set else '(will be wiped)'}"),
             Static(f"  desktop:     [white]{c['de']}[/]"),
+            Static(f"  greeter:     [white]{c.get('greeter', 'sddm')}[/]"),
             Static(f"  kernels:     [white]{kernels}[/]"),
             Static(f"  bootloader:  [white]{c['bootloader']}[/]"),
             Static(f"  extras:      [white]{extras}[/]"),
@@ -395,10 +408,13 @@ class GuidedScreen(Screen):
             elif self.step == 5:
                 sel_de = self.query_one("#de", SelectionList)
                 sel_bl = self.query_one("#bootloader", SelectionList)
+                sel_gr = self.query_one("#greeter", SelectionList)
                 if sel_de.selected:
                     self.config["de"] = sel_de.selected[0]
                 if sel_bl.selected:
                     self.config["bootloader"] = sel_bl.selected[0]
+                if sel_gr.selected:
+                    self.config["greeter"] = sel_gr.selected[0]
             elif self.step == 6:
                 u = self.query_one("#username", Input)
                 p = self.query_one("#password", Input)

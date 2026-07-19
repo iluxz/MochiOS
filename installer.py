@@ -162,7 +162,7 @@ def setup_btrfs(root_part, target, lfn):
     run(["mount", "-o", "compress=zstd,subvol=cache", root_part, f"{target}/var/cache"])
 
 
-def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extra_pkgs=None, abort_flag=None):
+def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", kernels=None, extra_pkgs=None, abort_flag=None):
     if kernels is None:
         kernels = ["linux"]
     lfn("installing base system...")
@@ -185,18 +185,27 @@ def pacstrap_base(target, lfn, de="kde", bootloader="limine", kernels=None, extr
     de_pkgs = {
         "kde": ["plasma-desktop", "plasma-workspace", "kdeplasma-addons",
                 "kwin", "konsole", "dolphin", "kate", "gwenview",
-                "sddm", "kwallet-pam", "breeze", "breeze-gtk",
+                "kwallet-pam", "breeze", "breeze-gtk",
                 "pipewire", "pipewire-pulse", "wireplumber", "kpipewire",
                 "plasma-nm"],
-        "gnome": ["gnome", "gnome-extra", "gdm"],
-        "none": [],
+        "gnome": ["gnome", "gnome-extra"],
+        "hyprland": ["hyprland", "kitty", "xdg-desktop-portal-hyprland",
+                     "wofi", "waybar", "dunst", "polkit-kde-agent",
+                     "wl-clipboard", "slurp", "grim", "hyprpaper"],
+    }
+    greeter_pkgs = {
+        "sddm": ["sddm"],
+        "gdm": ["gdm"],
+        "lightdm": ["lightdm", "lightdm-gtk-greeter"],
+        "ly": ["ly"],
+        "greetd": ["greetd", "greetd-tuigreet"],
     }
     bl_pkgs = {
         "limine": ["limine"],
         "grub": ["grub"],
         "mochiboot": ["mochiboot"],
     }
-    pkgs = base + de_pkgs.get(de, []) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
+    pkgs = base + de_pkgs.get(de, de_pkgs["kde"]) + greeter_pkgs.get(greeter, greeter_pkgs["sddm"]) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
     abortable_run(["pacstrap", "-K", target] + pkgs, abort_flag, timeout=900)
 
 
@@ -205,6 +214,7 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     username = config.get("username", "mochi")
     password = config.get("password", "mochi")
     de = config.get("de", "kde")
+    greeter = config.get("greeter", "")
     bootloader = config.get("bootloader", "limine")
     kernels = config.get("kernels", ["linux"])
     disk = config.get("disk", "")
@@ -266,9 +276,8 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     ch(["systemctl", "enable", "NetworkManager"])
     ch(["systemctl", "enable", "sshd"])
 
-    dm = "sddm" if de == "kde" else "gdm" if de == "gnome" else None
-    if dm:
-        ch(["systemctl", "enable", dm])
+    if greeter and greeter != "none":
+        ch(["systemctl", "enable", greeter])
         ch(["systemctl", "set-default", "graphical.target"])
 
     lfn("importing mochios signing key...")
@@ -509,7 +518,7 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         repo_extra = [p for p in extra_all if isinstance(p, str) and p not in CUSTOM_EXTRAS]
         custom_extra = [p for p in extra_all if isinstance(p, str) and p in CUSTOM_EXTRAS]
 
-        pacstrap_base(target, log_fn, de=config.get("de", "kde"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag)
+        pacstrap_base(target, log_fn, de=config.get("de", "kde"), greeter=config.get("greeter", "sddm"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag)
 
         log_fn("relaxing SigLevel for custom packages...")
         pmconf_path = f"{target}/etc/pacman.conf"

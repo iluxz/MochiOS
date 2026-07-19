@@ -1,7 +1,7 @@
 # Maintainer: mochios team
 pkgname=mochios-defaults
 pkgver=0.1.0
-pkgrel=2
+pkgrel=4
 pkgdesc="mochios default system configuration files"
 arch=('any')
 url="https://mochios.dev"
@@ -16,4 +16,6 @@ package() {
   echo "$pkgver-$pkgrel" > "$pkgdir/etc/mochios-defaults-version"
   install -Dm755 usr/bin/mochi-wallpaper "$pkgdir/usr/bin/mochi-wallpaper"
   install -Dm644 etc/xdg/autostart/mochi-wallpaper.desktop "$pkgdir/etc/xdg/autostart/mochi-wallpaper.desktop"
+  install -Dm644 etc/xdg/kwinrc "$pkgdir/etc/xdg/kwinrc"
+  install -Dm644 etc/skel/.config/hypr/hyprland.lua "$pkgdir/etc/skel/.config/hypr/hyprland.lua"
 }
