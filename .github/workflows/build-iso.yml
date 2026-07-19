@@ -11,6 +11,13 @@ jobs:
     container:
       image: archlinux/archlinux:latest
       options: --privileged
+    strategy:
+      matrix:
+        variant:
+          - channel: nightly
+            nightly: "true"
+          - channel: stable
+            nightly: "false"
     steps:
       - name: install deps
         run: |
@@ -54,13 +61,13 @@ jobs:
           WORK_DIR=/tmp/mochios-work \
           GNUPGHOME=/home/mochi/.mochios-gnupg \
           SIGN_KEY=ci@mochios.dev \
-          NIGHTLY=true \
+          NIGHTLY=${{ matrix.variant.nightly }} \
           bash /tmp/mochios/build.sh 2>&1
 
       - name: upload iso
         uses: actions/upload-artifact@v7
         with:
-          name: mochios-iso
+          name: mochios-iso-${{ matrix.variant.channel }}
           path: /tmp/mochios/out/*.iso
           retention-days: 30
 
@@ -82,7 +89,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v7
         with:
-          name: mochios-iso
+          name: mochios-iso-${{ matrix.channel.tag }}
           path: /tmp/iso
 
       - name: publish ${{ matrix.channel.tag }} release
