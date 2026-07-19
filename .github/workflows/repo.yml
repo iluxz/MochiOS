@@ -32,7 +32,7 @@ jobs:
         run: |
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Sy --noconfirm base-devel go python python-textual zstd git fakeroot nasm autoconf automake mtools
+          pacman -Sy --noconfirm base-devel go python python-textual zstd git fakeroot nasm autoconf automake mtools clang
 
       - name: Create builder
         run: |
@@ -70,7 +70,7 @@ jobs:
           cd pkgbuilds/mochiboot
           pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
           tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' *
-          sudo -u builder makepkg -cf --noconfirm --nodeps
+          CC_FOR_TARGET=gcc sudo -u builder makepkg -cf --noconfirm --nodeps
 
       - name: Create repo
         run: |

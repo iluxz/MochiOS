@@ -25,7 +25,7 @@ sha256sums=('SKIP'
 build() {
   cd "$srcdir/mochiboot"
   ./bootstrap
-  ./configure --enable-grub --enable-bios --enable-uefi-x86-64
+  CC_FOR_TARGET="${CC_FOR_TARGET:-gcc}" ./configure --enable-grub --enable-bios --enable-uefi-x86-64
   make
 }
 
