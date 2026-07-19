@@ -96,15 +96,20 @@ jobs:
 
       - name: Replace symlinks with real files
         run: |
+          echo "checking /repo/os/x86_64..."
+          ls -la /repo/os/x86_64/ || echo "dir not found!"
           cd /repo/os/x86_64
           for f in mochi.db mochi.files; do
               if [ -L "$f" ]; then
                   real="${f}.tar.zst"
                   rm -f "$f" "${f}.sig"
-                  cp "$real" "$f"
-                  [ -f "${real}.sig" ] && cp "${real}.sig" "${f}.sig"
+                  cp -v "$real" "$f" || echo "cp failed for $real"
+              fi
+              if [ -f "${f}.tar.zst.sig" ]; then
+                  cp -v "${f}.tar.zst.sig" "${f}.sig" || true
               fi
           done
+          echo "done"
 
       - name: Static binary
         run: |
