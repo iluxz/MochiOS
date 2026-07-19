@@ -215,10 +215,10 @@ jobs:
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
             gh release create "$RELEASE_TAG" \
               "${iso}.part."* join-iso.bat join-iso.sh SHA256SUMS.txt \
-              --title "$RELEASE_TITLE" --notes "auto-built from main"
+              --title "$RELEASE_TITLE" --notes "mochiOS ${{ github.ref_name }}"
           else
             gh release delete "$RELEASE_TAG" --yes 2>/dev/null || true
             gh release create "$RELEASE_TAG" \
               "$iso" join-iso.bat join-iso.sh SHA256SUMS.txt \
-              --title "$RELEASE_TITLE" --notes "auto-built from main"
+              --title "$RELEASE_TITLE" --notes "mochiOS ${{ github.ref_name }}"
           fi
