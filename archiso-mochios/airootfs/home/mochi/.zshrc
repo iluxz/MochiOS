@@ -3,6 +3,11 @@ if [ -z "$MOCHI_LIVE_INIT" ]; then
     export MOCHI_LIVE_INIT=1
     echo "welcome to mochios live!"
 
+    # rank mirrors for faster downloads
+    if command -v reflector &>/dev/null; then
+        reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist &>/dev/null &
+    fi
+
     # nuke discover from everywhere
     rm -f "$HOME/Desktop/org.kde.discover.desktop" \
           "$HOME/Desktop/discover.desktop" \
