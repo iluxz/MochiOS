@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtProperty, pyqtSignal, QObject, QThread, QTimer
 from PyQt6.QtGui import QColor, QPalette, QFont
 
-from installer import do_install
+from installer import do_install, set_progress_cb
 
 NIGHTLY_STYLE = """
 QWidget { background-color: #1a1025; color: #e0d0f0; font-family: "Noto Sans", "Cantarell", sans-serif; font-size: 13px; }
@@ -101,19 +101,6 @@ def _strip_markup(t):
     return re.sub(r"\[/?\w+(?: \w+)?\]", "", t)
 
 
-STEP_PATTERNS = [
-    (r"starting mochios installation", 5),
-    (r"partitioning", 15),
-    (r"formatting", 25),
-    (r"setup|subvolume", 35),
-    (r"pacstrap|installing base", 55),
-    (r"installing mochi packages|mochi packages", 70),
-    (r"optional packages", 80),
-    (r"configuring system|configure_system|fstab|hostname|locale|network|user|password|grub|initramfs|limine", 90),
-    (r"installation complete", 100),
-]
-
-
 class InstallWorker(QObject):
     log_line = pyqtSignal(str)
     progress = pyqtSignal(int)
@@ -130,14 +117,14 @@ class InstallWorker(QObject):
     def run(self):
         def log_fn(msg):
             self.log_line.emit(_strip_markup(msg))
-            for pat, pct in STEP_PATTERNS:
-                if re.search(pat, msg, re.IGNORECASE):
-                    self.progress.emit(pct)
-                    break
+
+        def prog_cb(current, total):
+            self.progress.emit(int(current * 100 / total))
 
         def abort_flag():
             return self._abort
 
+        set_progress_cb(prog_cb)
         try:
             ok = do_install(config=self.config, log_fn=log_fn, abort_flag=abort_flag)
             self.finished.emit(ok)
@@ -194,10 +181,11 @@ class WelcomePage(QWizardPage):
         d.setObjectName("pageDesc")
         lo.addWidget(d)
         art = QLabel(
-            "   ____ ___  ____    __    _ ____  _____\n"
-            "  / __ `__ \\/ __ \\  / /_  (_) __ \\/ ___/\n"
-            " / / / / / / /_/ / / __ \\/ / / / /\\__ \\ \n"
-            "/_/ /_/ /_/\\____/ /_/ /_/_/_/ /_//____/  "
+            "                      _     _  ___  ____  \n"
+            " _ __ ___   ___   ___| |__ (_)/ _ \\/ ___| \n"
+            "| '_ ` _ \\ / _ \\ / __| '_ \\| | | | \\___ \\ \n"
+            "| | | | | | (_) | (__| | | | | |_| |___) |\n"
+            "|_| |_| |_|\\___/ \\___|_| |_|_|\\___/|____/ "
         )
         art.setStyleSheet(
             f"color: {'#9664c8' if nightly else '#7a3cb0'};"

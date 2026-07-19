@@ -13,7 +13,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mochi_ascii import MOCHI_ASCII
-from installer import do_install
+from installer import do_install, set_progress_cb
 
 
 STEP_NAMES = ["Hostname", "Disk", "Filesystem", "Kernel", "Extras", "Desktop & Boot", "User", "Review"]
@@ -452,7 +452,6 @@ class ProgressScreen(Screen):
         super().__init__()
         self.config = config
         self._abort = False
-        self._pulse_timer = None
 
     def compose(self) -> ComposeResult:
         yield Container(
@@ -473,15 +472,15 @@ class ProgressScreen(Screen):
         self.status = self.query_one("#prog_status", Static)
         self.bar = self.query_one("#prog_bar", ProgressBar)
         self.log_widget.write("starting installation...")
-        self._pulse()
+        self.bar.update(progress=0)
+        set_progress_cb(self._on_progress)
         t = threading.Thread(target=self._run_install, daemon=True)
         t.start()
 
-    def _pulse(self) -> None:
-        if self._abort:
-            return
-        self.bar.advance(1)
-        self._pulse_timer = self.set_timer(0.3, self._pulse)
+    def _on_progress(self, current, total):
+        pct = int(current * 100 / total)
+        self.post_message(LogUpdate(f"[dim]step {current}/{total}[/]"))
+        self.bar.update(progress=pct)
 
     def _run_install(self):
         def log_fn(msg):
@@ -504,8 +503,6 @@ class ProgressScreen(Screen):
         self.log_widget.write(msg.text)
 
     def on_install_done(self, msg: InstallDone) -> None:
-        if self._pulse_timer:
-            self._pulse_timer.cancel()
         body = self.query_one("#prog_body")
         if msg.success:
             self.bar.update(progress=100)
@@ -526,8 +523,6 @@ class ProgressScreen(Screen):
             self.app.exit()
         elif event.button.id == "abort":
             self._abort = True
-            if self._pulse_timer:
-                self._pulse_timer.cancel()
             self.log_widget.write("[yellow]aborting after current step...[/]")
 
     def action_quit(self) -> None:

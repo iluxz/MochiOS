@@ -9,6 +9,18 @@ from pathlib import Path
 
 CUSTOM_EXTRAS = set()
 
+_TOTAL_STEPS = 60
+_STEP_COUNT = [0]
+_PROGRESS_CB = [None]
+
+def set_progress_cb(fn):
+    _PROGRESS_CB[0] = fn
+
+def _inc_step():
+    _STEP_COUNT[0] += 1
+    if _PROGRESS_CB[0]:
+        _PROGRESS_CB[0](min(_STEP_COUNT[0], _TOTAL_STEPS), _TOTAL_STEPS)
+
 
 def run(cmd, check=True, capture=False, timeout=None, input_data=None):
     opts = dict(timeout=timeout, check=check)
@@ -19,6 +31,7 @@ def run(cmd, check=True, capture=False, timeout=None, input_data=None):
         opts["input"] = input_data
         opts["text"] = True
     r = subprocess.run(cmd, **opts)
+    _inc_step()
     return r
 
 
@@ -55,6 +68,7 @@ def abortable_run(cmd, abort_flag, check=True, timeout=None):
     out = "".join(out_lines)
     if check and proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd, out)
+    _inc_step()
     return out
 
 
@@ -489,6 +503,7 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         config = {}
 
     mounts_cleanup_needed = False
+    _STEP_COUNT[0] = 0
     try:
         if abort_flag and abort_flag():
             raise RuntimeError("installation aborted")
@@ -519,7 +534,7 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         custom_extra = [p for p in extra_all if isinstance(p, str) and p in CUSTOM_EXTRAS]
 
         # ensure [mochi] repo is available for pacstrap
-        mochi_conf = "\n[mochi]\nSigLevel = Optional TrustAll\nServer = https://github.com/iluxz/MochiOS/raw/gh-pages/repo/os/x86_64\n"
+        mochi_conf = "\n[mochi]\nSigLevel = Optional TrustAll\nServer = https://github.com/iluxz/MochiOS/raw/gh-pages/os/x86_64\n"
         with open("/etc/pacman.conf", "a") as f:
             if "[mochi]" not in open("/etc/pacman.conf").read():
                 f.write(mochi_conf)
