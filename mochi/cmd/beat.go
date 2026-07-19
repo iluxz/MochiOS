@@ -53,10 +53,22 @@ func beat(args []string) error {
 		return nil
 	}
 
+	pacmanPkgs := []string{}
 	for _, pkg := range args {
-		fmt.Printf("beating %s...\n", pkg)
+		if id, ok := knownPackages[strings.ToLower(pkg)]; ok {
+			fmt.Printf("beating %s via flatpak...\n", pkg)
+			err := runFlatpak(id)
+			if err != nil {
+				return err
+			}
+		} else {
+			pacmanPkgs = append(pacmanPkgs, pkg)
+		}
 	}
-	return runPacman(append([]string{"-S", "--needed"}, args...)...)
+	if len(pacmanPkgs) > 0 {
+		return runPacman(append([]string{"-S", "--needed"}, pacmanPkgs...)...)
+	}
+	return nil
 }
 
 func beatWinget(pkg string) error {
@@ -73,6 +85,18 @@ func beatWinget(pkg string) error {
 	}
 
 	return runWinget("install", "--id", "--exact", "--disable-interactivity", "--accept-package-agreements", "--accept-source-agreements", id)
+}
+
+func runFlatpak(id string) error {
+	// ensure flathub remote exists
+	exec.Command("flatpak", "remote-add", "--if-not-exists", "flathub", "https://flathub.org/repo/flathub.flatpakrepo").Run()
+	c := exec.Command("flatpak", "install", "-y", "flathub", id)
+	out, err := c.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("flatpak install %s failed: %w\n%s", id, err, string(out))
+	}
+	fmt.Print(string(out))
+	return nil
 }
 
 func resolvePackage(query string) (string, error) {

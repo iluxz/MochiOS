@@ -8,17 +8,22 @@ if [ -z "$MOCHI_LIVE_INIT" ]; then
         reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist &>/dev/null &
     fi
 
-    # early cleanup of discover
-    rm -f "$HOME/Desktop/org.kde.discover.desktop" \
-          "$HOME/Desktop/discover.desktop" \
-          "/usr/share/applications/org.kde.discover.desktop" 2>/dev/null
-    # autostart script nuke-discover handles the taskbar after plasma loads
+    # ensure discover is gone
+    pkill -x discover 2>/dev/null || true
+    sudo pacman -Rdd discover --noconfirm 2>/dev/null || true
+
+    # disable kde launch confirmation globally
+    mkdir -p "$HOME/.config"
+    cat > "$HOME/.config/klaunchrc" << 'EOF'
+[General]
+ConfirmLaunch=false
+EOF
 
     echo "the installer should open shortly..."
 
-    # if we're in a tty (no kde), launch installer directly
+    # always launch installer (kde autostart is a fallback)
     if [ -z "$XDG_CURRENT_DESKTOP" ] && [ -z "$KDE_FULL_SESSION" ]; then
         sleep 2
-        mochiinstall
+        sudo -E mochiinstall
     fi
 fi

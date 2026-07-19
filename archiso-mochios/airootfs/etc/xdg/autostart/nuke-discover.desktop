@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Nuke Discover
+Comment=Remove discover from the taskbar after plasma loads
+Exec=/usr/lib/mochiinstall/nuke-discover.sh
+Terminal=false
+X-KDE-Authorize=true

@@ -191,8 +191,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: stable
-          RELEASE_TITLE: MochiOS
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TITLE: MochiOS ${{ github.ref_name }}
         run: |
           cd /tmp/iso
           iso=$(ls *.iso 2>/dev/null | head -1)

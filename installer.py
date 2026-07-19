@@ -7,7 +7,7 @@ import shutil
 import time
 from pathlib import Path
 
-CUSTOM_EXTRAS = set()
+CUSTOM_EXTRAS = {"steam"}
 
 _TOTAL_STEPS = 60
 _STEP_COUNT = [0]
