@@ -6,7 +6,7 @@ import (
 	"os/exec"
 )
 
-const mochiRepoBlock = "\n[mochi]\nServer = https://github.com/iluxz/MochiOS/raw/main/repo/os/x86_64\nSigLevel = Optional TrustAll\n"
+const mochiRepoBlock = "\n[mochi]\nServer = https://github.com/iluxz/MochiOS/raw/gh-pages/repo/os/x86_64\nSigLevel = Optional TrustAll\n"
 
 func repo(args []string) error {
 	if len(args) < 1 {
