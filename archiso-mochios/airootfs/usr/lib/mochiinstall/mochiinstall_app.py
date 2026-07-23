@@ -294,9 +294,14 @@ class GuidedScreen(Screen):
         self.body.mount(self._wrap(*kids))
 
     def step_fs(self) -> None:
+        fs = self.config.get("filesystem", "btrfs")
         self.body.mount(self._wrap(
             Static("[bold]filesystem[/]"),
-            SelectionList((("btrfs (snapshots + abroot)", "btrfs", True)), id="fs"),
+            SelectionList(
+                ("btrfs (snapshots + abroot)", "btrfs", fs == "btrfs"),
+                ("ext4 (traditional)", "ext4", fs == "ext4"),
+                id="fs",
+            ),
         ))
         self._nav()
 
@@ -399,6 +404,10 @@ class GuidedScreen(Screen):
                 sel = self.query_one("#disk_list", SelectionList)
                 if sel.selected:
                     self.config["disk"] = sel.selected[0]
+            elif self.step == 2:
+                sel = self.query_one("#fs", SelectionList)
+                if sel.selected:
+                    self.config["filesystem"] = sel.selected[0]
             elif self.step == 3:
                 sel = self.query_one("#kernel", SelectionList)
                 self.config["kernels"] = sel.selected if sel.selected else ["linux"]

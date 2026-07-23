@@ -211,7 +211,20 @@ def setup_btrfs(root_part, target, lfn):
     run(["mount", "-o", "compress=zstd,subvol=cache", root_part, f"{target}/var/cache"])
 
 
-def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", kernels=None, extra_pkgs=None, abort_flag=None):
+def format_ext4(part, lfn):
+    lfn(f"formatting root {part} as ext4...")
+    retry_cmd(["mkfs.ext4", "-F", "-L", "MOCHIOS", part], lfn, timeout=120)
+
+
+def setup_ext4(root_part, target, lfn):
+    lfn("mounting ext4 root...")
+    os.makedirs(target, exist_ok=True)
+    run(["mount", root_part, target])
+    os.makedirs(f"{target}/boot", exist_ok=True)
+    os.makedirs(f"{target}/home", exist_ok=True)
+
+
+def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", kernels=None, extra_pkgs=None, abort_flag=None, filesystem="btrfs"):
     if kernels is None:
         kernels = ["linux"]
 
@@ -226,12 +239,14 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
         "base",
         *kernel_pkgs,
         "linux-firmware",
-        "btrfs-progs", "snapper", "sudo", "vim", "nano",
+        "sudo", "vim", "nano",
         "gptfdisk",
         "networkmanager", "dhcpcd", "reflector",
         "sbctl",
         "zsh", "git", "flatpak",
     ]
+    if filesystem == "btrfs":
+        base.extend(["btrfs-progs", "snapper"])
     abortable_run(["pacstrap", "-K", target] + base, abort_flag, timeout=900, log_fn=lfn)
 
     # step 2: desktop environment
@@ -240,7 +255,8 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
                 "kwin", "konsole", "dolphin", "kate", "gwenview",
                 "kwallet-pam", "breeze", "breeze-gtk",
                 "pipewire", "pipewire-pulse", "wireplumber", "kpipewire",
-                "plasma-nm"],
+                "plasma-nm", "systemsettings", "powerdevil", "plasma-pa",
+                "polkit-kde-agent", "xdg-desktop-portal-kde", "bluedevil"],
         "gnome": ["gnome", "gnome-extra"],
         "hyprland": ["hyprland", "kitty", "xdg-desktop-portal-hyprland",
                      "wofi", "waybar", "dunst", "polkit-kde-agent",
@@ -278,6 +294,7 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     bootloader = config.get("bootloader", "limine")
     kernels = config.get("kernels", ["linux"])
     disk = config.get("disk", "")
+    filesystem = config.get("filesystem", "btrfs")
 
     lfn("configuring system...")
     t = Path(target)
@@ -299,25 +316,34 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     ch(["mkinitcpio", "-P"], to=300)
 
     lfn("writing fstab...")
-    fstab = (
-        f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2\n"
-        f"UUID={swap_uuid} swap swap defaults 0 0\n"
-        f"UUID={root_uuid} /mnt/btrfs btrfs rw,noatime,compress=zstd,subvolid=5 0 0\n"
-        f"UUID={root_uuid} / btrfs rw,noatime,compress=zstd,subvol=root_a 0 0\n"
-        f"UUID={root_uuid} /home btrfs rw,noatime,compress=zstd,subvol=home 0 0\n"
-        f"UUID={root_uuid} /var btrfs rw,noatime,compress=zstd,subvol=var 0 0\n"
-        f"UUID={root_uuid} /var/cache btrfs rw,noatime,compress=zstd,subvol=cache 0 0\n"
-    )
+    if filesystem == "btrfs":
+        fstab = (
+            f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2\n"
+            f"UUID={swap_uuid} swap swap defaults 0 0\n"
+            f"UUID={root_uuid} /mnt/btrfs btrfs rw,noatime,compress=zstd,subvolid=5 0 0\n"
+            f"UUID={root_uuid} / btrfs rw,noatime,compress=zstd,subvol=root_a 0 0\n"
+            f"UUID={root_uuid} /home btrfs rw,noatime,compress=zstd,subvol=home 0 0\n"
+            f"UUID={root_uuid} /var btrfs rw,noatime,compress=zstd,subvol=var 0 0\n"
+            f"UUID={root_uuid} /var/cache btrfs rw,noatime,compress=zstd,subvol=cache 0 0\n"
+        )
+        os.makedirs(f"{target}/mnt/btrfs", exist_ok=True)
+    else:
+        fstab = (
+            f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2\n"
+            f"UUID={swap_uuid} swap swap defaults 0 0\n"
+            f"UUID={root_uuid} / ext4 rw,noatime 0 1\n"
+            f"UUID={root_uuid} /home ext4 rw,noatime 0 2\n"
+        )
     (t / "etc/fstab").write_text(fstab)
-    os.makedirs(f"{target}/mnt/btrfs", exist_ok=True)
     ch(["systemctl", "daemon-reload"])
 
-    (t / "etc/abroot.conf").write_text(
-        f"ROOT_PART=\"UUID={root_uuid}\"\n"
-        f"BTRFS_MOUNT=\"/mnt/btrfs\"\n"
-        f"ACTIVE_ROOT=\"root_a\"\n"
-        f"NEXT_ROOT=\"root_b\"\n"
-    )
+    if filesystem == "btrfs":
+        (t / "etc/abroot.conf").write_text(
+            f"ROOT_PART=\"UUID={root_uuid}\"\n"
+            f"BTRFS_MOUNT=\"/mnt/btrfs\"\n"
+            f"ACTIVE_ROOT=\"root_a\"\n"
+            f"NEXT_ROOT=\"root_b\"\n"
+        )
 
     lfn("enabling multilib repo...")
     pmconf = t / "etc/pacman.conf"
@@ -353,11 +379,11 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
         lfn("  [yellow]mochios key not found, skipping[/]")
 
     if bootloader == "limine":
-        install_limine(target, disk, root_uuid, lfn, ch, kernels=kernels)
+        install_limine(target, disk, root_uuid, lfn, ch, kernels=kernels, filesystem=filesystem)
     elif bootloader == "grub":
-        install_grub(target, disk, root_uuid, lfn, ch, kernels=kernels)
+        install_grub(target, disk, root_uuid, lfn, ch, kernels=kernels, filesystem=filesystem)
     elif bootloader == "mochiboot":
-        install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=kernels)
+        install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=kernels, filesystem=filesystem)
 
     lfn("signing boot files with sbctl...")
     keydir = t / "var/lib/sbctl/keys/db"
@@ -401,11 +427,12 @@ def get_uuid(part):
     return run(["blkid", "-s", "UUID", "-o", "value", part], capture=True, check=True).stdout.strip()
 
 
-def install_limine(target, disk, root_uuid, lfn, ch, kernels=None):
+def install_limine(target, disk, root_uuid, lfn, ch, kernels=None, filesystem="btrfs"):
     if kernels is None:
         kernels = ["linux"]
     lfn("installing limine...")
 
+    root_flags = "rootflags=subvol=root_a " if filesystem == "btrfs" else ""
     config_lines = ["TIMEOUT=5", "VERBOSE=no", ""]
     for k in kernels:
         vmlinuz = f"/boot/vmlinuz-{k}"
@@ -413,7 +440,7 @@ def install_limine(target, disk, root_uuid, lfn, ch, kernels=None):
         config_lines.append(f":{label}")
         config_lines.append("    PROTOCOL=linux")
         config_lines.append(f"    KERNEL_PATH={vmlinuz}")
-        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4")
+        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} {root_flags}rw loglevel=4")
         config_lines.append("")
 
     config = "\n".join(config_lines)
@@ -434,21 +461,22 @@ def install_limine(target, disk, root_uuid, lfn, ch, kernels=None):
         ch(["cp", "/usr/share/limine/BOOTIA32.EFI", "/boot/EFI/BOOT/BOOTIA32.EFI"], to=30)
 
 
-def install_grub(target, disk, root_uuid, lfn, ch, kernels=None):
+def install_grub(target, disk, root_uuid, lfn, ch, kernels=None, filesystem="btrfs"):
     if kernels is None:
         kernels = ["linux"]
     lfn("installing grub...")
 
     grub_def = Path(target) / "etc/default/grub"
     grub_text = grub_def.read_text() if grub_def.exists() else ""
+    root_flags = "rootflags=subvol=root_a" if filesystem == "btrfs" else ""
     new_grub_text = []
     for line in grub_text.split("\n"):
         if line.startswith("GRUB_CMDLINE_LINUX="):
-            new_grub_text.append('GRUB_CMDLINE_LINUX="rootflags=subvol=root_a"')
+            new_grub_text.append(f'GRUB_CMDLINE_LINUX="{root_flags}"')
         else:
             new_grub_text.append(line)
     if "GRUB_CMDLINE_LINUX=" not in grub_text:
-        new_grub_text.append('GRUB_CMDLINE_LINUX="rootflags=subvol=root_a"')
+        new_grub_text.append(f'GRUB_CMDLINE_LINUX="{root_flags}"')
     grub_def.write_text("\n".join(new_grub_text))
 
     ch(["grub-install", "--target=x86_64-efi", "--efi-directory=/boot", "--bootloader-id=MOCHIOS", "--removable"])
@@ -456,10 +484,12 @@ def install_grub(target, disk, root_uuid, lfn, ch, kernels=None):
     ch(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"])
 
 
-def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None):
+def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None, filesystem="btrfs"):
     if kernels is None:
         kernels = ["linux"]
     lfn("installing mochiboot...")
+
+    root_flags = "rootflags=subvol=root_a " if filesystem == "btrfs" else ""
 
     config_lines = [
         "TIMEOUT=5",
@@ -488,12 +518,12 @@ def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None):
         config_lines.append(f":{label}")
         config_lines.append("    PROTOCOL=linux")
         config_lines.append(f"    KERNEL_PATH={vmlinuz}")
-        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4")
+        config_lines.append(f"    CMDLINE=root=UUID={root_uuid} {root_flags}rw loglevel=4")
         config_lines.append("")
     config_lines.append(":MOCHIOS (recovery mode)")
     config_lines.append("    PROTOCOL=linux")
     config_lines.append(f"    KERNEL_PATH=/boot/vmlinuz-{kernels[0]}")
-    config_lines.append(f"    CMDLINE=root=UUID={root_uuid} rootflags=subvol=root_a rw loglevel=4 mochi.recovery")
+    config_lines.append(f"    CMDLINE=root=UUID={root_uuid} {root_flags}rw loglevel=4 mochi.recovery")
     config_lines.append("")
 
     config = "\n".join(config_lines)
@@ -542,11 +572,32 @@ def cleanup_mounts(target):
     _sp.run(["umount", "-l", "/mnt/btrfs_tmp"], capture_output=True, check=False, timeout=10)
 
 
+_INSTALL_LOCK = "/tmp/mochiinstall.lock"
+
+def _acquire_lock():
+    try:
+        fd = os.open(_INSTALL_LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        return False
+
+def _release_lock():
+    try:
+        os.remove(_INSTALL_LOCK)
+    except OSError:
+        pass
+
+
 def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None):
     if log_fn is None:
         log_fn = print
     if config is None:
         config = {}
+
+    if not _acquire_lock():
+        raise RuntimeError("another installer instance is already running")
 
     mounts_cleanup_needed = False
     _STEP_COUNT[0] = 0
@@ -566,16 +617,30 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
             raise RuntimeError("installation aborted")
         format_efi(efi_part, log_fn)
         format_swap(swap_part, log_fn)
-        format_btrfs(root_part_p, log_fn)
+
+        filesystem = config.get("filesystem", "btrfs")
+        if filesystem == "ext4":
+            format_ext4(root_part_p, log_fn)
+        else:
+            format_btrfs(root_part_p, log_fn)
 
         if abort_flag and abort_flag():
             raise RuntimeError("installation aborted")
         _CLEANUP_TARGET[0] = target
-        setup_btrfs(root_part_p, target, log_fn)
+        if filesystem == "ext4":
+            setup_ext4(root_part_p, target, log_fn)
+        else:
+            setup_btrfs(root_part_p, target, log_fn)
 
         efi_uuid = get_uuid(efi_part)
         swap_uuid = get_uuid(swap_part)
         root_uuid = get_uuid(root_part_p)
+
+        if filesystem == "btrfs":
+            log_fn("configuring snapper for root...")
+            run(["arch-chroot", target, "snapper", "-c", "root", "create-config", "/"], check=False, timeout=30)
+            run(["arch-chroot", target, "systemctl", "enable", "snapper-timeline.timer"], check=False)
+            run(["arch-chroot", target, "systemctl", "enable", "snapper-cleanup.timer"], check=False)
 
         run(["swapon", swap_part], check=False)
         run(["mount", efi_part, f"{target}/boot"])
@@ -586,11 +651,15 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
 
         # ensure [mochi] repo is available for pacstrap
         mochi_conf = "\n[mochi]\nSigLevel = Optional TrustAll\nServer = https://github.com/iluxz/MochiOS/raw/gh-pages/os/x86_64\n"
-        with open("/etc/pacman.conf", "a") as f:
-            if "[mochi]" not in open("/etc/pacman.conf").read():
+        already_has_mochi = False
+        if os.path.exists("/etc/pacman.conf"):
+            with open("/etc/pacman.conf") as check:
+                already_has_mochi = "[mochi]" in check.read()
+        if not already_has_mochi:
+            with open("/etc/pacman.conf", "a") as f:
                 f.write(mochi_conf)
 
-        pacstrap_base(target, log_fn, de=config.get("de", "kde"), greeter=config.get("greeter", "sddm"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag)
+        pacstrap_base(target, log_fn, de=config.get("de", "kde"), greeter=config.get("greeter", "sddm"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag, filesystem=filesystem)
 
         log_fn("relaxing SigLevel for custom packages...")
         pmconf_path = f"{target}/etc/pacman.conf"
@@ -679,6 +748,7 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         log_fn(f"[dim]{traceback.format_exc()[-500:]}[/]")
         return False
     finally:
+        _release_lock()
         if mounts_cleanup_needed:
             log_fn("[yellow]cleaning up mounts after failure...[/]")
             cleanup_mounts(target)

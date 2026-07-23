@@ -2,10 +2,8 @@
 Type=Application
 Name=MochiOS Installer
 Comment=Install MochiOS to your system
-Exec=mochiinstall
+Exec=sudo -E /usr/local/bin/mochiinstall
 Icon=system-software-install
 Terminal=false
 Categories=System;
 X-KDE-Authorize=true
-Trusted=true
-

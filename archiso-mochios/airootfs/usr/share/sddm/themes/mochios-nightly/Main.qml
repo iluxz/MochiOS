@@ -3,8 +3,8 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 Rectangle {
-    width: 1920
-    height: 1080
+    width: Screen.width
+    height: Screen.height
     color: "#0d0719"
 
     Canvas {
