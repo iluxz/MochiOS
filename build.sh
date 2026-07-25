@@ -163,7 +163,7 @@ for f in mochi.db mochi.files; do
     if [ -L "$f" ]; then
         real="${f}.tar.zst"
         rm -f "$f" "${f}.sig"
-        cp "$real" "$f"
+        zstd -dq "$real" -o "$f" || cp "$real" "$f"
         [ -f "${real}.sig" ] && cp "${real}.sig" "${f}.sig"
     fi
 done

@@ -103,7 +103,8 @@ jobs:
               if [ -L "$f" ]; then
                   real="${f}.tar.zst"
                   rm -f "$f" "${f}.sig"
-                  cp -v "$real" "$f" || echo "cp failed for $real"
+                  zstd -dq "$real" -o "$f" || cp -v "$real" "$f"
+                  echo "  $f: $(file "$f" | cut -d: -f2)"
               fi
               if [ -f "${f}.tar.zst.sig" ]; then
                   cp -v "${f}.tar.zst.sig" "${f}.sig" || true
