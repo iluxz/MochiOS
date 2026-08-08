@@ -26,9 +26,10 @@ jobs:
       - name: Create full tarball
         run: |
           DATE=$(date +%Y-%m-%d)
-          tar czf "mochios-$DATE.tar.gz" \
-            --exclude=.git \
-            --transform "s/^\./mochios-$DATE/" .
+          mkdir -p /tmp/mochios-backup
+          rsync -a --exclude='.git' --exclude='bin' --exclude='guest' --exclude='mochi-engine' . /tmp/mochios-backup/mochios-$DATE/
+          tar czf "mochios-$DATE.tar.gz" -C /tmp/mochios-backup mochios-$DATE/
+          rm -rf /tmp/mochios-backup
 
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
