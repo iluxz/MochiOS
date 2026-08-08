@@ -652,11 +652,12 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         # ensure [mochi] repo is available for pacstrap
         mochi_conf = "\n[mochi]\nSigLevel = Optional TrustAll\nServer = https://github.com/iluxz/MochiOS/raw/gh-pages/os/x86_64\n"
         already_has_mochi = False
-        if os.path.exists("/etc/pacman.conf"):
-            with open("/etc/pacman.conf") as check:
+        target_pacman = f"{target}/etc/pacman.conf"
+        if os.path.exists(target_pacman):
+            with open(target_pacman) as check:
                 already_has_mochi = "[mochi]" in check.read()
         if not already_has_mochi:
-            with open("/etc/pacman.conf", "a") as f:
+            with open(target_pacman, "a") as f:
                 f.write(mochi_conf)
 
         pacstrap_base(target, log_fn, de=config.get("de", "kde"), greeter=config.get("greeter", "sddm"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag, filesystem=filesystem)

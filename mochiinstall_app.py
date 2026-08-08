@@ -384,6 +384,7 @@ class GuidedScreen(Screen):
             Static(""),
             Static(f"  hostname:    [white]{c['hostname']}[/]"),
             Static(f"  disk:        [red]{c['disk'] or 'NOT SELECTED'}[/] {'[red bold](required!)' if not disk_set else '(will be wiped)'}"),
+            Static(f"  filesystem:  [white]{c.get('filesystem', 'btrfs')}[/]"),
             Static(f"  desktop:     [white]{c['de']}[/]"),
             Static(f"  greeter:     [white]{c.get('greeter', 'sddm')}[/]"),
             Static(f"  kernels:     [white]{kernels}[/]"),

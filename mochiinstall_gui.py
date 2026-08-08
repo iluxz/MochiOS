@@ -349,7 +349,6 @@ class FSPage(QWizardPage):
         for i, (n, d) in enumerate([
             ("btrfs", "snapshots, compression, subvolumes"),
             ("ext4",  "simple, reliable, widely used"),
-            ("xfs",   "good for large files, media workloads"),
         ]):
             rb = QRadioButton(f"  {n}  \u2014  {d}")
             self._fs.addButton(rb, i)
@@ -642,7 +641,7 @@ class MochiWizard(QWizard):
         p = self.page(self.currentId())
 
         if isinstance(p, FSPage):
-            self._cfg["fs"] = ["btrfs", "ext4", "xfs"][p._fs.checkedId()]
+            self._cfg["fs"] = ["btrfs", "ext4"][p._fs.checkedId()]
             self._cfg["bl"] = ["limine", "grub", "mochiboot"][p._bl.checkedId()]
         elif isinstance(p, KernelPage):
             self._cfg["kernels"] = [
