@@ -3,10 +3,8 @@ name: Public Repo
 on:
   push:
     paths:
-      - "pkgbuilds/mochi/**"
+      - "pkgbuilds/**"
       - "mochi/**"
-      - "pkgbuilds/mochiinstall/**"
-      - "pkgbuilds/mochiboot/**"
       - "mochiinstall_wrapper"
       - "installer.py"
       - "mochiinstall_app.py"
@@ -35,7 +33,7 @@ jobs:
         run: |
           pacman-key --init
           pacman-key --populate archlinux
-          pacman -Sy --noconfirm base-devel go python python-textual zstd git fakeroot nasm autoconf automake mtools clang lld llvm
+          pacman -Sy --noconfirm base-devel go python python-textual zstd git fakeroot nasm autoconf automake mtools clang lld llvm gnu-efi
 
       - name: Create builder
         run: |
@@ -75,12 +73,62 @@ jobs:
           tar czf "mochiboot-$pkgver.tar.gz" --exclude="mochiboot-$pkgver.tar.gz" --exclude='pkg' --exclude='src' *
           CC_FOR_TARGET=gcc LD_FOR_TARGET=ld.lld OBJCOPY_FOR_TARGET=llvm-objcopy sudo -u builder makepkg -cf --noconfirm --nodeps
 
+      - name: Build mochi-abroot
+        run: |
+          cd pkgbuilds/mochi-abroot
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochi-abroot-$pkgver.tar.gz" -C "$PWD" abroot.sh abroot.conf
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Build mochi-splash
+        run: |
+          cd pkgbuilds/mochi-splash
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochi-splash-$pkgver.tar.gz" -C "$PWD" splash.c Makefile
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Build mochios-branding
+        run: |
+          cd pkgbuilds/mochios-branding
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochios-branding-$pkgver.tar.gz" -C "$PWD" usr
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Build mochios-branding-nightly
+        run: |
+          cd pkgbuilds/mochios-branding-nightly
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochios-branding-nightly-$pkgver.tar.gz" -C "$PWD" etc usr
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Build mochios-defaults
+        run: |
+          cd pkgbuilds/mochios-defaults
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "mochios-defaults-$pkgver.tar.gz" -C "$PWD" etc usr mochios-release
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Build sober
+        run: |
+          cd pkgbuilds/sober
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          tar czf "sober-$pkgver.tar.gz" -C "$PWD" sober-wrapper.sh
+          sudo -u builder makepkg -cf --noconfirm --nodeps
+
+      - name: Build zen-browser
+        run: |
+          cd pkgbuilds/zen-browser
+          pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
+          sudo -u builder makepkg -cf --noconfirm --nodeps --skipchecksums
+
       - name: Create repo
         run: |
           mkdir -p /repo/os/x86_64
-          for f in pkgbuilds/mochi/mochi-*.pkg.tar.zst pkgbuilds/mochiinstall/mochiinstall-*.pkg.tar.zst pkgbuilds/mochiboot/mochiboot-*.pkg.tar.zst; do
-            [ -f "$f" ] || continue
-            cp "$f" /repo/os/x86_64/
+          for dir in pkgbuilds/*/; do
+            for f in "$dir"*.pkg.tar.zst; do
+              [ -f "$f" ] || continue
+              cp "$f" /repo/os/x86_64/
+            done
           done
           cp /repo/pubkey/mochios-key.pub /repo/os/x86_64/
 

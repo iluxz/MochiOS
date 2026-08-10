@@ -1,0 +1,67 @@
+[global]
+    monitor = 0
+    follow = mouse
+
+    width = 350
+    height = 100
+    origin = top-right
+    offset = 15x15
+    notification_limit = 5
+
+    progress_bar = true
+    progress_bar_height = 10
+    progress_bar_frame_width = 1
+    progress_bar_min_width = 150
+    progress_bar_max_width = 300
+
+    indicate_hidden = yes
+    transparency = 10
+    separator_height = 2
+    padding = 12
+    horizontal_padding = 12
+    text_icon_padding = 12
+    frame_width = 1
+    frame_color = "#5a3a7e"
+    gap_size = 4
+    separator_color = frame
+    sort = yes
+
+    font = Noto Sans 10
+    line_height = 0
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    show_age_threshold = 60
+    ellipsize = middle
+    ignore_newline = no
+    stack_duplicates = true
+    hide_duplicate_count = false
+    show_indicators = yes
+
+    icon_position = left
+    min_icon_size = 32
+    max_icon_size = 64
+
+    corner_radius = 8
+    mouse_left_click = close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
+
+[urgency_low]
+    background = "#1a1025"
+    foreground = "#e0d0f0"
+    frame_color = "#5a3a7e"
+    timeout = 5
+
+[urgency_normal]
+    background = "#1a1025"
+    foreground = "#e0d0f0"
+    frame_color = "#7a3cb0"
+    timeout = 10
+
+[urgency_critical]
+    background = "#1a1025"
+    foreground = "#e0d0f0"
+    frame_color = "#f38ba8"
+    timeout = 0

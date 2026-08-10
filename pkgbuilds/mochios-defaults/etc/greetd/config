@@ -1,0 +1,6 @@
+[terminal]
+vt = 1
+
+[default_session]
+command = "tuigreet --remember --remember-session --time --greeting 'welcome to mochios :3'"
+user = "greeter"
