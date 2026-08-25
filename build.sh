@@ -134,6 +134,7 @@ for pattern in \
   "$REPO_DIR/os/x86_64/"mochios-branding-nightly-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochi-abroot-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"mochiboot-[0-9]*.pkg.tar.zst \
+  "$REPO_DIR/os/x86_64/"mochi-splash-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"zen-browser-[0-9]*.pkg.tar.zst \
   "$REPO_DIR/os/x86_64/"sober-[0-9]*.pkg.tar.zst; do
   for pkg in $pattern; do
@@ -145,17 +146,13 @@ echo "==> updating repo..."
 cd "$REPO_DIR"
 rm -f os/x86_64/mochi.db.tar.zst.lck
 rm -f os/x86_64/mochi.db.tar.zst.sig
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochi-[0-9]*.pkg.tar.zst
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochiinstall-[0-9]*.pkg.tar.zst
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-defaults-[0-9]*.pkg.tar.zst
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-branding-[0-9]*.pkg.tar.zst
-if [ "$NIGHTLY" = "true" ]; then
-  GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochios-branding-nightly-[0-9]*.pkg.tar.zst
+# collect all packages and add them in one repo-add call
+ALL_PKGS=$(ls os/x86_64/*.pkg.tar.zst 2>/dev/null | grep -v debug || true)
+if [ -n "$ALL_PKGS" ]; then
+  GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst $ALL_PKGS
+else
+  echo "  warning: no packages found for repo-add"
 fi
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochi-abroot-[0-9]*.pkg.tar.zst
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/mochiboot-[0-9]*.pkg.tar.zst
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/zen-browser-[0-9]*.pkg.tar.zst
-GNUPGHOME="$GNUPGHOME" repo-add --sign os/x86_64/mochi.db.tar.zst os/x86_64/sober-[0-9]*.pkg.tar.zst
 
 echo "==> replacing symlinks with real files (GitHub raw doesn't follow symlinks)..."
 cd "$REPO_DIR/os/x86_64"
@@ -179,12 +176,12 @@ fi
 echo "==> staging mochi packages for installer..."
 mkdir -p "$ISO_DIR/airootfs/opt/mochi-pkgs"
 if [ "$NIGHTLY" = "true" ]; then
-  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding-nightly mochi-abroot mochiboot"
+  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding-nightly mochi-abroot mochiboot mochi-splash"
 else
-  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding mochi-abroot mochiboot"
+  STAGED_PKGS="mochi mochiinstall mochios-defaults mochios-branding mochi-abroot mochiboot mochi-splash"
 fi
 for pkg in $STAGED_PKGS; do
-  cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/"
+  cp "$REPO_DIR/os/x86_64/"$pkg-[0-9]*.pkg.tar.zst "$ISO_DIR/airootfs/opt/mochi-pkgs/" 2>/dev/null || true
 done
 
 echo "==> syncing mochiinstall files to airootfs..."

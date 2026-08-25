@@ -44,9 +44,9 @@ jobs:
         run: |
           mkdir -p /home/builder/.gnupg
           chmod 700 /home/builder/.gnupg
-          printf 'Key-Type: RSA\nKey-Length: 4096\nSubkey-Type: RSA\nSubkey-Length: 4096\nName-Real: MochiOS\nName-Email: repo@mochios.dev\nExpire-Date: 0\n%%no-protection\n%%commit\n' | gpg --homedir /home/builder/.gnupg --batch --gen-key
+          printf 'Key-Type: RSA\nKey-Length: 4096\nSubkey-Type: RSA\nSubkey-Length: 4096\nName-Real: MochiOS\nName-Email: ci@mochios.dev\nExpire-Date: 0\n%%no-protection\n%%commit\n' | gpg --homedir /home/builder/.gnupg --batch --gen-key
           mkdir -p /repo/pubkey
-          gpg --homedir /home/builder/.gnupg --export --armor repo@mochios.dev > /repo/pubkey/mochios-key.pub
+          gpg --homedir /home/builder/.gnupg --export --armor ci@mochios.dev > /repo/pubkey/mochios-key.pub
 
       - name: Build mochi
         run: |

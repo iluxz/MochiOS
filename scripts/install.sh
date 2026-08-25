@@ -14,8 +14,8 @@ if command -v pacman &>/dev/null; then
     cat >> /etc/pacman.conf << 'PACMAN'
 
 [mochi]
-SigLevel = Optional
-Server = https://iluxz.github.io/MochiOS/repo/os/x86_64
+SigLevel = Optional TrustAll
+Server = https://github.com/iluxz/MochiOS/raw/gh-pages/os/x86_64
 PACMAN
     echo "  added [mochi] to /etc/pacman.conf"
   fi

@@ -669,6 +669,7 @@ class MochiWizard(QWizard):
             "hostname": self.field("hostname"),
             "username": self.field("username"),
             "password": self.field("password"),
+            "filesystem": self._cfg.get("fs", "btrfs"),
             "bootloader": self._cfg.get("bl", "limine"),
             "kernels": self._cfg.get("kernels", ["linux"]),
             "extra_pkgs": self._cfg.get("extras", []),

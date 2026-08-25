@@ -1,8 +1,23 @@
 ## mochios live mirrorlist
-## generated 2026-07-19
+## updated 2026-08-24
+## reflector will re-rank on boot — these are fallbacks
 
-Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+## americas
 Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+Server = https://mirror.sjtu.edu.cn/archlinux/$repo/os/$arch
+
+## europe
 Server = https://archlinux.uk.mirror.allworldit.com/archlinux/$repo/os/$arch
 Server = https://mirror.one.com/archlinux/$repo/os/$arch
-Server = https://archlinux.thaller.ws/$repo/os/$arch
+Server = https://archlinux.thaller.ws/archlinux/$repo/os/$arch
+Server = https://ftp.halifax.rwth-aachen.de/archlinux/$repo/os/$arch
+
+## middle east / caucasus
+Server = https://ftp.linux.org.tr/archlinux/$repo/os/$arch
+Server = https://mirror.redifux.org/archlinux/$repo/os/$arch
+
+## asia
+Server = https://mirror.mia.zayers.net/archlinux/$repo/os/$arch
+Server = https://archlinux.mailtunnel.eu/archlinux/$repo/os/$arch
+Server = https://mirror.kakao.com/archlinux/$repo/os/$arch

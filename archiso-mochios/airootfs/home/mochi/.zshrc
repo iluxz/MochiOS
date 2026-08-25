@@ -3,9 +3,11 @@ if [ -z "$MOCHI_LIVE_INIT" ]; then
     export MOCHI_LIVE_INIT=1
     echo "welcome to mochios live!"
 
-    # rank mirrors for faster downloads
+    # rank mirrors for faster downloads (synchronous — wait for completion)
     if command -v reflector &>/dev/null; then
-        reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist &>/dev/null &
+        echo "ranking mirrors..."
+        sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist 2>/dev/null && \
+            echo "mirrors ranked!" || echo "reflector failed, using default mirrors"
     fi
 
     # ensure discover is gone

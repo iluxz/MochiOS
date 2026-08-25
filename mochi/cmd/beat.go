@@ -88,8 +88,14 @@ func beatWinget(pkg string) error {
 }
 
 func runFlatpak(id string) error {
+	// ensure flatpak is available
+	if _, err := exec.LookPath("flatpak"); err != nil {
+		return fmt.Errorf("flatpak is not installed — install it with your package manager first")
+	}
 	// ensure flathub remote exists
-	exec.Command("flatpak", "remote-add", "--if-not-exists", "flathub", "https://flathub.org/repo/flathub.flatpakrepo").Run()
+	if err := exec.Command("flatpak", "remote-add", "--if-not-exists", "flathub", "https://flathub.org/repo/flathub.flatpakrepo").Run(); err != nil {
+		fmt.Printf("warning: could not add flathub remote: %v\n", err)
+	}
 	c := exec.Command("flatpak", "install", "-y", "flathub", id)
 	out, err := c.CombinedOutput()
 	if err != nil {

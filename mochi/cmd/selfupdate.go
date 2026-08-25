@@ -6,12 +6,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 )
 
-const baseURL = "https://raw.githubusercontent.com/iluxz/MochiOS/main/mochi/"
+const baseURL = "https://github.com/iluxz/MochiOS/raw/gh-pages/static/"
 
 func updateURLForPlatform() string {
 	if runtime.GOOS == "windows" {
@@ -109,22 +110,46 @@ func selfUpdate(args []string) error {
 }
 
 func replaceWindows(exe, tmp string) {
-	bat := filepath.Join(os.TempDir(), "mochi-update.bat")
-	batContent := fmt.Sprintf(`@echo off
-:sleep
-timeout /t 1 /nobreak >nul 2>&1
-if exist "%s" (
-  del "%s"
-  if exist "%s" goto sleep
-)
-copy /y "%s" "%s" >nul
-del "%s"
-`, exe, exe, exe, tmp, exe, tmp)
-	if err := os.WriteFile(bat, []byte(batContent), 0755); err != nil {
-		fmt.Printf("warning: could not create update script: %v\n", err)
-	} else {
-		fmt.Printf("done! run %s or reboot to finish the update\n", bat)
+	// rename current exe to .old, copy new one in place, then delete .old
+	// Windows allows renaming a running exe but not deleting it
+	old := exe + ".old"
+	os.Remove(old) // clean up any previous .old
+	if err := os.Rename(exe, old); err != nil {
+		fmt.Printf("warning: could not rename current exe: %v\n", err)
+		fmt.Printf("run this manually: copy /y \"%s\" \"%s\"\n", tmp, exe)
+		return
 	}
+	if err := copyFile(tmp, exe); err != nil {
+		fmt.Printf("warning: could not copy new exe: %v\n", err)
+		os.Rename(old, exe) // restore
+		return
+	}
+	// schedule .old cleanup via a bat that waits briefly then deletes
+	bat := filepath.Join(os.TempDir(), "mochi-cleanup-old.bat")
+	batContent := fmt.Sprintf(`@echo off
+timeout /t 2 /nobreak >nul 2>&1
+del "%s"
+del "%%~f0"
+`, old)
+	os.WriteFile(bat, []byte(batContent), 0755)
+	// run the cleanup bat in background
+	exec.Command("cmd", "/c", "start", "/b", bat).Start()
+	fmt.Println("done! restart mochi to use the new version")
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	return err
 }
 
 func replaceUnix(exe, tmp string) error {
