@@ -16,6 +16,8 @@ var knownPackages = map[string]string{
 	"chromium":        "Google.Chromium",
 	"edge":            "Microsoft.Edge",
 	"brave":           "Brave.Brave",
+	"zen-browser":     "app.zen_browser.zen",
+	"zen":             "app.zen_browser.zen",
 	"vim":             "vim.vim",
 	"neovim":          "Neovim.Neovim",
 	"vscode":          "Microsoft.VisualStudioCode",

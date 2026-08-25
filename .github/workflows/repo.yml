@@ -178,6 +178,7 @@ jobs:
       - name: Deploy to gh-pages
         run: |
           cd /repo
+          find os -name 'zen-browser-*' -delete
           git init
           git config user.name "bot"
           git config user.email "bot@mochios.dev"
