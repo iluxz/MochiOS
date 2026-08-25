@@ -1,6 +1,6 @@
 CC      = gcc
-LD      = ld.lld
-OBJCOPY = llvm-objcopy
+LD      = ld
+OBJCOPY = objcopy
 
 EFI_ARCH = x86_64
 ARCH_INC = /usr/include/efi/$(EFI_ARCH)

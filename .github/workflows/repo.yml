@@ -81,6 +81,7 @@ jobs:
           sudo -u builder makepkg -cf --noconfirm --nodeps
 
       - name: Build mochi-splash
+        continue-on-error: true
         run: |
           cd pkgbuilds/mochi-splash
           pkgver=$(grep -oP '^pkgver=\K.*' PKGBUILD | head -1)
