@@ -215,10 +215,26 @@ class GuidedScreen(Screen):
             hint.update("")
             self._nav(can_next=has_disk, next_label="next")
         elif self.step == 2:
-            sel = self.query_one("#disk_mode", SelectionList)
-            if sel.selected:
-                self.config["disk_mode"] = sel.selected[0]
-            self.render_step()
+            try:
+                mode_sel = self.query_one("#disk_mode", SelectionList)
+                if mode_sel.selected:
+                    old_mode = self.config.get("disk_mode", "wipe")
+                    new_mode = mode_sel.selected[0]
+                    self.config["disk_mode"] = new_mode
+                    if old_mode != new_mode:
+                        self.render_step()
+                        return
+            except Exception:
+                pass
+            try:
+                root_sel = self.query_one("#existing_root", SelectionList)
+                if root_sel.selected:
+                    self.config["existing_root"] = root_sel.selected[0]
+                    hint = self.query_one("#part_hint", Label)
+                    if hint: hint.update("")
+                    self._nav(can_next=True, next_label="next")
+            except Exception:
+                pass
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if self.step == 0:
@@ -335,10 +351,13 @@ class GuidedScreen(Screen):
                 kids.append(Static(""))
                 kids.append(Static("[bold]select root partition for mochios:[/]"))
                 kids.append(SelectionList(*linux_parts, id="existing_root"))
+                has_root = bool(self.config.get("existing_root"))
+                self._nav(can_next=has_root, next_label="next")
             else:
                 kids.append(Static("[yellow]no suitable partitions found — create one first or choose wipe[/]"))
-
-        self._nav()
+                self._nav(can_next=False, next_label="next")
+        else:
+            self._nav()
         self.body.mount(self._wrap(*kids))
 
     def step_fs(self) -> None:
