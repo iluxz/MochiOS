@@ -16,7 +16,8 @@
 
 ## about
 
-mochiOS is a Linux distribution built on Arch Linux that actually works out of the box. The simple installation process makes it extremely pleasant and easy to get into. yerah
+mochiOS is a Linux distribution built on Arch Linux that actually works out of the box. The simple installation process makes it extremely pleasant and easy to get into.
+
 uses **mochiboot** (a limine fork), **abroot** (a/b atomic updates on btrfs), and a custom **mochi** cli that wraps pacman so you don't have to remember flags.
 
 ## features
