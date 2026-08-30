@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtProperty, pyqtSignal, QObject, QThread, QTimer
 from PyQt6.QtGui import QColor, QPalette, QFont
 
-from installer import do_install
+from installer import do_install, set_progress_cb, detect_disk_partitions_summary
 
 NIGHTLY_STYLE = """
 QWidget { background-color: #1a1025; color: #e0d0f0; font-family: "Noto Sans", "Cantarell", sans-serif; font-size: 13px; }
@@ -92,7 +92,7 @@ QPushButton#sideBtn[active="true"] { background-color: #d0b8e0; color: #3a1e5e; 
 """
 
 SIDEBAR_LABELS = [
-    "Welcome", "Hostname & User", "Disk", "Filesystem",
+    "Welcome", "Hostname & User", "Disk", "Partitions", "Filesystem",
     "Kernel", "Extras", "Desktop", "Greeter", "Summary", "Install",
 ]
 
@@ -335,6 +335,39 @@ class DiskPage(QWizardPage):
         self._scan()
 
 
+class PartitionPage(QWizardPage):
+    def __init__(self, nightly):
+        super().__init__()
+        self._nightly = nightly
+        lo = QVBoxLayout(self)
+        lo.setContentsMargins(32, 32, 32, 32)
+        t = QLabel("Partition Info")
+        t.setObjectName("pageTitle")
+        lo.addWidget(t)
+        d = QLabel("Existing partitions on the selected disk.")
+        d.setObjectName("pageDesc")
+        lo.addWidget(d)
+        self._info = QLabel("")
+        self._info.setStyleSheet(
+            f"color: {'#b0a0c0' if nightly else '#1a1025'};"
+            " font-family: monospace; line-height: 1.5;"
+        )
+        self._info.setWordWrap(True)
+        lo.addWidget(self._info)
+        note = QLabel("full 'use existing partition' mode coming soon — currently wipes the whole disk")
+        note.setStyleSheet(f"color: {'#705090' if nightly else '#705090'}; font-size: 11px;")
+        lo.addWidget(note)
+        lo.addStretch()
+
+    def initializePage(self):
+        disk = self.wizard().field("disk") or ""
+        if disk:
+            summary = detect_disk_partitions_summary(disk)
+            self._info.setText(summary)
+        else:
+            self._info.setText("no disk selected")
+
+
 class FSPage(QWizardPage):
     def __init__(self, nightly):
         super().__init__()
@@ -349,7 +382,6 @@ class FSPage(QWizardPage):
         for i, (n, d) in enumerate([
             ("btrfs", "snapshots, compression, subvolumes"),
             ("ext4",  "simple, reliable, widely used"),
-            ("xfs",   "good for large files, media workloads"),
         ]):
             rb = QRadioButton(f"  {n}  \u2014  {d}")
             self._fs.addButton(rb, i)
@@ -606,6 +638,7 @@ class MochiWizard(QWizard):
         self._pids.append(self.addPage(WelcomePage(nightly)))
         self._pids.append(self.addPage(HostnamePage(nightly)))
         self._pids.append(self.addPage(DiskPage(nightly)))
+        self._pids.append(self.addPage(PartitionPage(nightly)))
         self._pids.append(self.addPage(FSPage(nightly)))
         self._pids.append(self.addPage(KernelPage(nightly)))
         self._pids.append(self.addPage(ExtrasPage(nightly)))
@@ -642,7 +675,7 @@ class MochiWizard(QWizard):
         p = self.page(self.currentId())
 
         if isinstance(p, FSPage):
-            self._cfg["fs"] = ["btrfs", "ext4", "xfs"][p._fs.checkedId()]
+            self._cfg["fs"] = ["btrfs", "ext4"][p._fs.checkedId()]
             self._cfg["bl"] = ["limine", "grub", "mochiboot"][p._bl.checkedId()]
         elif isinstance(p, KernelPage):
             self._cfg["kernels"] = [
@@ -670,6 +703,7 @@ class MochiWizard(QWizard):
             "hostname": self.field("hostname"),
             "username": self.field("username"),
             "password": self.field("password"),
+            "filesystem": self._cfg.get("fs", "btrfs"),
             "bootloader": self._cfg.get("bl", "limine"),
             "kernels": self._cfg.get("kernels", ["linux"]),
             "extra_pkgs": self._cfg.get("extras", []),

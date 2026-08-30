@@ -12,13 +12,95 @@ from pathlib import Path
 
 CUSTOM_EXTRAS = {"steam"}
 
+FALLBACK_MIRRORS = [
+    "https://mirrors.kernel.org/archlinux/$repo/os/$arch",
+    "https://mirror.rackspace.com/archlinux/$repo/os/$arch",
+    "https://archlinux.uk.mirror.allworldit.com/archlinux/$repo/os/$arch",
+    "https://mirror.one.com/archlinux/$repo/os/$arch",
+    "https://archlinux.thaller.ws/archlinux/$repo/os/$arch",
+    "https://ftp.linux.org.tr/archlinux/$repo/os/$arch",
+]
+
+
+def detect_microcode():
+    try:
+        with open("/proc/cpuinfo") as f:
+            cpuinfo = f.read().lower()
+        if "authenticamd" in cpuinfo:
+            return "amd-ucode"
+        elif "genuineintel" in cpuinfo:
+            return "intel-ucode"
+    except Exception:
+        pass
+    return None
+
+
+def check_network(lfn, retries=3, delay=5):
+    import urllib.request
+    for attempt in range(retries):
+        try:
+            urllib.request.urlopen("https://archlinux.org", timeout=10)
+            lfn("network connectivity verified")
+            return True
+        except Exception:
+            if attempt < retries - 1:
+                lfn(f"[yellow]no network, retrying in {delay}s... ({attempt+1}/{retries})[/]")
+                time.sleep(delay)
+    return False
+
+
+def rank_mirrors(lfn):
+    if not shutil.which("reflector"):
+        lfn("[yellow]reflector not found, skipping mirror ranking[/]")
+        return False
+    lfn("ranking mirrors by speed...")
+    r = subprocess.run(
+        ["reflector", "--latest", "20", "--protocol", "https", "--sort", "rate",
+         "--save", "/etc/pacman.d/mirrorlist"],
+        capture_output=True, text=True, timeout=60
+    )
+    if r.returncode == 0:
+        lfn("mirrors ranked successfully")
+        return True
+    lfn(f"[yellow]reflector failed: {r.stderr.strip()[:200]}[/]")
+    return False
+
+
+def set_fallback_mirrors(lfn):
+    lfn("setting fallback mirrors...")
+    mirrorlist = "/etc/pacman.d/mirrorlist"
+    try:
+        with open(mirrorlist, "w") as f:
+            f.write("## mochios fallback mirrors\n")
+            for m in FALLBACK_MIRRORS:
+                f.write(f"Server = {m}\n")
+        lfn("fallback mirrors configured")
+    except Exception as e:
+        lfn(f"[yellow]could not write mirrorlist: {e}[/]")
+
+
+def pacstrap_with_fallback(target, pkgs, abort_flag, lfn, timeout=900):
+    try:
+        abortable_run(["pacstrap", "-K", target] + pkgs, abort_flag, timeout=timeout, log_fn=lfn)
+        return True
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        err = str(e)[:300]
+        lfn(f"[yellow]pacstrap failed, trying fallback mirrors... ({err})[/]")
+        set_fallback_mirrors(lfn)
+        try:
+            abortable_run(["pacstrap", "-K", target] + pkgs, abort_flag, timeout=timeout, log_fn=lfn)
+            return True
+        except Exception as e2:
+            lfn(f"[red]pacstrap failed even with fallback mirrors: {e2}[/]")
+            raise
+
 _CLEANUP_TARGET = [None]
 
 def _unmount_all():
     target = _CLEANUP_TARGET[0]
     if not target or not os.path.ismount(target):
         return
-    for mp in [f"{target}/var/cache", f"{target}/var", f"{target}/home", f"{target}/boot", target]:
+    for mp in [f"{target}/boot", f"{target}/var/cache", f"{target}/var", f"{target}/home", target]:
         subprocess.run(["umount", "-l", mp], capture_output=True, check=False, timeout=10)
     subprocess.run(["umount", "-l", "/mnt/btrfs_tmp"], capture_output=True, check=False, timeout=10)
     subprocess.run(["swapoff", "-a"], capture_output=True, check=False, timeout=10)
@@ -141,6 +223,45 @@ def retry_cmd(cmd, lfn, max_retries=5, delay=2, **kwargs):
                 raise
 
 
+def detect_partitions(disk):
+    """detect existing partitions on a disk. returns list of dicts with name, size, type, mountpoint, fstype."""
+    partitions = []
+    try:
+        r = subprocess.run(
+            ["lsblk", "-Jno", "NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,LABEL", disk],
+            capture_output=True, text=True, timeout=5
+        )
+        import json
+        data = json.loads(r.stdout)
+        for dev in data.get("blockdevices", []):
+            for child in dev.get("children", []):
+                partitions.append({
+                    "name": f"/dev/{child['name']}",
+                    "size": child.get("size", "?"),
+                    "type": child.get("type", "?"),
+                    "fstype": child.get("fstype", ""),
+                    "mountpoint": child.get("mountpoint", ""),
+                    "label": child.get("label", ""),
+                })
+    except Exception:
+        pass
+    return partitions
+
+
+def detect_disk_partitions_summary(disk):
+    """return a human-readable summary of partitions on a disk."""
+    parts = detect_partitions(disk)
+    if not parts:
+        return "no partitions found (empty or unformatted disk)"
+    lines = []
+    for p in parts:
+        label = f" [{p['label']}]" if p["label"] else ""
+        mount = f" mounted at {p['mountpoint']}" if p["mountpoint"] else ""
+        fstype = f" ({p['fstype']})" if p["fstype"] else ""
+        lines.append(f"  {p['name']}  {p['size']}{fstype}{label}{mount}")
+    return "\n".join(lines)
+
+
 def select_disk(disk):
     if not disk or not disk.startswith("/dev/"):
         raise ValueError(f"invalid disk: {disk}")
@@ -194,7 +315,7 @@ def setup_btrfs(root_part, target, lfn):
     tmp = "/mnt/btrfs_tmp"
     os.makedirs(tmp, exist_ok=True)
     run(["mount", "-o", "subvol=/", root_part, tmp])
-    for sv in ["root_a", "root_b", "home", "snapshots", "var", "cache"]:
+    for sv in ["root_a", "root_b", "home", "var", "cache"]:
         run(["btrfs", "subvolume", "delete", f"{tmp}/{sv}"], check=False)
         run(["btrfs", "subvolume", "create", f"{tmp}/{sv}"])
     run(["umount", tmp])
@@ -241,13 +362,17 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
         "linux-firmware",
         "sudo", "vim", "nano",
         "gptfdisk",
-        "networkmanager", "dhcpcd", "reflector",
+        "networkmanager", "dhcpcd",
         "sbctl",
         "zsh", "git", "flatpak",
     ]
+    ucode = detect_microcode()
+    if ucode:
+        base.append(ucode)
+        lfn(f"detected CPU microcode: {ucode}")
     if filesystem == "btrfs":
         base.extend(["btrfs-progs", "snapper"])
-    abortable_run(["pacstrap", "-K", target] + base, abort_flag, timeout=900, log_fn=lfn)
+    pacstrap_with_fallback(target, base, abort_flag, lfn, timeout=900)
 
     # step 2: desktop environment
     de_pkgs = {
@@ -264,7 +389,7 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
     }
     de_choice = de_pkgs.get(de, de_pkgs["kde"])
     lfn(f"installing {de} desktop...")
-    abortable_run(["pacstrap", "-K", target] + de_choice, abort_flag, timeout=600, log_fn=lfn)
+    pacstrap_with_fallback(target, de_choice, abort_flag, lfn, timeout=600)
 
     # step 3: greeter + bootloader + extras
     greeter_pkgs = {
@@ -282,7 +407,7 @@ def pacstrap_base(target, lfn, de="kde", greeter="sddm", bootloader="limine", ke
     misc = greeter_pkgs.get(greeter, greeter_pkgs["sddm"]) + bl_pkgs.get(bootloader, []) + (extra_pkgs or [])
     if misc:
         lfn("installing greeter, bootloader, and extras...")
-        abortable_run(["pacstrap", "-K", target] + misc, abort_flag, timeout=300, log_fn=lfn)
+        pacstrap_with_fallback(target, misc, abort_flag, lfn, timeout=300)
 
 
 def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
@@ -567,7 +692,7 @@ def install_mochiboot(target, disk, root_uuid, lfn, ch, kernels=None, filesystem
 
 def cleanup_mounts(target):
     import subprocess as _sp
-    for mp in [f"{target}/var/cache", f"{target}/var", f"{target}/home", f"{target}/boot", target]:
+    for mp in [f"{target}/boot", f"{target}/var/cache", f"{target}/var", f"{target}/home", target]:
         _sp.run(["umount", "-l", mp], capture_output=True, check=False, timeout=10)
     _sp.run(["umount", "-l", "/mnt/btrfs_tmp"], capture_output=True, check=False, timeout=10)
 
@@ -652,12 +777,20 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         # ensure [mochi] repo is available for pacstrap
         mochi_conf = "\n[mochi]\nSigLevel = Optional TrustAll\nServer = https://github.com/iluxz/MochiOS/raw/gh-pages/os/x86_64\n"
         already_has_mochi = False
-        if os.path.exists("/etc/pacman.conf"):
-            with open("/etc/pacman.conf") as check:
+        target_pacman = f"{target}/etc/pacman.conf"
+        if os.path.exists(target_pacman):
+            with open(target_pacman) as check:
                 already_has_mochi = "[mochi]" in check.read()
         if not already_has_mochi:
-            with open("/etc/pacman.conf", "a") as f:
+            with open(target_pacman, "a") as f:
                 f.write(mochi_conf)
+
+        # rank mirrors and check network before pacstrap
+        if not check_network(log_fn):
+            log_fn("[red]no network connectivity — pacstrap will likely fail[/]")
+            log_fn("[yellow]connect to wifi or ethernet and try again[/]")
+            raise RuntimeError("no network connectivity")
+        rank_mirrors(log_fn)
 
         pacstrap_base(target, log_fn, de=config.get("de", "kde"), greeter=config.get("greeter", "sddm"), bootloader=config.get("bootloader", "limine"), kernels=config.get("kernels", ["linux"]), extra_pkgs=repo_extra, abort_flag=abort_flag, filesystem=filesystem)
 
