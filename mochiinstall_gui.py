@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtProperty, pyqtSignal, QObject, QThread, QTimer
 from PyQt6.QtGui import QColor, QPalette, QFont
 
-from installer import do_install, set_progress_cb, detect_disk_partitions_summary
+from installer import do_install, set_progress_cb, detect_disk_partitions_summary, detect_partitions
 
 NIGHTLY_STYLE = """
 QWidget { background-color: #1a1025; color: #e0d0f0; font-family: "Noto Sans", "Cantarell", sans-serif; font-size: 13px; }
@@ -344,7 +344,7 @@ class PartitionPage(QWizardPage):
         t = QLabel("Partition Info")
         t.setObjectName("pageTitle")
         lo.addWidget(t)
-        d = QLabel("Existing partitions on the selected disk.")
+        d = QLabel("Choose how to use the selected disk.")
         d.setObjectName("pageDesc")
         lo.addWidget(d)
         self._info = QLabel("")
@@ -354,10 +354,49 @@ class PartitionPage(QWizardPage):
         )
         self._info.setWordWrap(True)
         lo.addWidget(self._info)
-        note = QLabel("full 'use existing partition' mode coming soon — currently wipes the whole disk")
-        note.setStyleSheet(f"color: {'#705090' if nightly else '#705090'}; font-size: 11px;")
-        lo.addWidget(note)
+        lo.addSpacing(8)
+        self._wipe_rb = QRadioButton("  wipe entire disk  —  delete all partitions, create new mochios layout")
+        self._existing_rb = QRadioButton("  use existing partition  —  install mochios alongside other OS")
+        self._wipe_rb.setChecked(True)
+        lo.addWidget(self._wipe_rb)
+        lo.addWidget(self._existing_rb)
+        self._wipe_rb.toggled.connect(self._on_mode_changed)
+        self._partition_list = QListWidget()
+        self._partition_list.setMinimumHeight(100)
+        self._partition_list.setVisible(False)
+        lo.addWidget(self._partition_list)
         lo.addStretch()
+        self._selected_root = ""
+
+    def _on_mode_changed(self):
+        use_existing = self._existing_rb.isChecked()
+        self._partition_list.setVisible(use_existing)
+        if use_existing:
+            self._scan_partitions()
+        nb = self.wizard().button(QWizard.WizardButton.NextButton)
+        if nb:
+            if use_existing:
+                nb.setEnabled(bool(self._partition_list.selectedItems()))
+            else:
+                nb.setEnabled(True)
+
+    def _scan_partitions(self):
+        self._partition_list.clear()
+        disk = self.wizard().field("disk") or ""
+        if not disk:
+            self._partition_list.addItem("(no disk selected)")
+            return
+        parts = detect_partitions(disk)
+        found = False
+        for p in parts:
+            if p["fstype"] in ("ext4", "btrfs", "xfs", ""):
+                label = f"{p['name']}  {p['size']}  {p['fstype'] or 'unknown'}"
+                item = QListWidgetItem(label)
+                item.setData(Qt.ItemDataRole.UserRole, p["name"])
+                self._partition_list.addItem(item)
+                found = True
+        if not found:
+            self._partition_list.addItem("(no suitable partitions found — create one first)")
 
     def initializePage(self):
         disk = self.wizard().field("disk") or ""
@@ -366,6 +405,18 @@ class PartitionPage(QWizardPage):
             self._info.setText(summary)
         else:
             self._info.setText("no disk selected")
+
+    def validatePage(self):
+        if self._existing_rb.isChecked():
+            sel = self._partition_list.selectedItems()
+            if not sel:
+                return False
+            self._selected_root = sel[0].data(Qt.ItemDataRole.UserRole)
+            self.wizard()._cfg["existing_root"] = self._selected_root
+            self.wizard()._cfg["disk_mode"] = "existing"
+        else:
+            self.wizard()._cfg["disk_mode"] = "wipe"
+        return True
 
 
 class FSPage(QWizardPage):
@@ -709,6 +760,8 @@ class MochiWizard(QWizard):
             "extra_pkgs": self._cfg.get("extras", []),
             "de": self._cfg.get("de", "kde"),
             "greeter": self._cfg.get("greeter", "sddm"),
+            "disk_mode": self._cfg.get("disk_mode", "wipe"),
+            "existing_root": self._cfg.get("existing_root", ""),
         }
 
         self._progress_page.start_install(install_cfg)

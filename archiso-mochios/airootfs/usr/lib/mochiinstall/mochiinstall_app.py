@@ -13,7 +13,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mochi_ascii import MOCHI_ASCII
-from installer import do_install, set_progress_cb, detect_partitions, detect_disk_partitions_summary
+from installer import do_install, set_progress_cb, detect_partitions, detect_disk_partitions_summary, detect_existing_parts
 
 
 STEP_NAMES = ["Hostname", "Disk", "Partitions", "Filesystem", "Kernel", "Extras", "Desktop & Boot", "User", "Review"]
@@ -161,6 +161,12 @@ class GuidedScreen(Screen):
             hint = self.query_one("#disk_hint", Label) if self.body.query("#disk_hint") else None
             if hint: hint.update("[red]select a disk first![/]")
             return False
+        if self.step == 2:
+            mode = self.config.get("disk_mode", "wipe")
+            if mode == "existing" and not self.config.get("existing_root"):
+                hint = self.query_one("#part_hint", Label) if self.body.query("#part_hint") else None
+                if hint: hint.update("[red]select a partition or choose wipe![/]")
+                return False
         if self.step == 7:
             pw = self.config.get("password", "")
             pw_c = self.config.get("password_confirm", "")
@@ -208,6 +214,11 @@ class GuidedScreen(Screen):
             hint = self.query_one("#disk_hint", Label)
             hint.update("")
             self._nav(can_next=has_disk, next_label="next")
+        elif self.step == 2:
+            sel = self.query_one("#disk_mode", SelectionList)
+            if sel.selected:
+                self.config["disk_mode"] = sel.selected[0]
+            self.render_step()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if self.step == 0:
@@ -296,14 +307,36 @@ class GuidedScreen(Screen):
         self.body.mount(self._wrap(*kids))
 
     def step_partition(self) -> None:
-        """show partition info for selected disk."""
+        """show partition info and choose wipe vs existing."""
         disk = self.config.get("disk", "")
         kids = [Static(f"[bold]partitions on {disk}[/]")]
 
         part_summary = detect_disk_partitions_summary(disk)
         kids.append(Static(f"[dim]{part_summary}[/]"))
         kids.append(Static(""))
-        kids.append(Static("[dim]full 'use existing partition' mode coming soon — currently wipes the whole disk[/]"))
+
+        mode = self.config.get("disk_mode", "wipe")
+        kids.append(Label("", id="part_hint"))
+        kids.append(SelectionList(
+            ("wipe entire disk (delete all partitions, create new mochios layout)", "wipe", mode == "wipe"),
+            ("use existing partition (install mochios alongside other OS)", "existing", mode == "existing"),
+            id="disk_mode",
+        ))
+
+        if mode == "existing":
+            existing = detect_existing_parts(disk)
+            linux_parts = []
+            parts = detect_partitions(disk)
+            for p in parts:
+                if p["fstype"] in ("ext4", "btrfs", "xfs", ""):
+                    label = f"{p['name']}  {p['size']}  {p['fstype'] or 'unknown'}"
+                    linux_parts.append((label, p["name"], p["name"] == self.config.get("existing_root", "")))
+            if linux_parts:
+                kids.append(Static(""))
+                kids.append(Static("[bold]select root partition for mochios:[/]"))
+                kids.append(SelectionList(*linux_parts, id="existing_root"))
+            else:
+                kids.append(Static("[yellow]no suitable partitions found — create one first or choose wipe[/]"))
 
         self._nav()
         self.body.mount(self._wrap(*kids))
@@ -394,11 +427,14 @@ class GuidedScreen(Screen):
         disk_set = bool(c["disk"])
         extras = ", ".join(c.get("extra_pkgs", [])) or "none"
         kernels = ", ".join(c.get("kernels", ["linux"])) or "linux"
+        disk_mode = c.get("disk_mode", "wipe")
+        mode_label = "wipe entire disk" if disk_mode == "wipe" else f"use partition {c.get('existing_root', '?')}"
         self.body.mount(self._wrap(
             Static("[bold underline]review configuration[/]"),
             Static(""),
             Static(f"  hostname:    [white]{c['hostname']}[/]"),
-            Static(f"  disk:        [red]{c['disk'] or 'NOT SELECTED'}[/] {'[red bold](required!)' if not disk_set else '[dim](will be wiped)[/]'}"),
+            Static(f"  disk:        [red]{c['disk'] or 'NOT SELECTED'}[/] {'[red bold](required!)' if not disk_set else ''}"),
+            Static(f"  disk mode:   [white]{mode_label}[/]"),
             Static(f"  filesystem:  [white]{c.get('filesystem', 'btrfs')}[/]"),
             Static(f"  desktop:     [white]{c['de']}[/]"),
             Static(f"  greeter:     [white]{c.get('greeter', 'sddm')}[/]"),
@@ -407,7 +443,7 @@ class GuidedScreen(Screen):
             Static(f"  extras:      [white]{extras}[/]"),
             Static(f"  user:        [white]{c['username']}[/]"),
             Static(""),
-            Static("[red bold]WARNING: this will erase all data on the selected disk" if disk_set else "[red bold]select a disk first!"),
+            Static("[red bold]WARNING: this will erase data on the selected disk/partition" if disk_set else "[red bold]select a disk first!"),
         ))
         self._nav(next_label="install!" if disk_set else "", can_next=disk_set)
 
@@ -420,6 +456,17 @@ class GuidedScreen(Screen):
                 sel = self.query_one("#disk_list", SelectionList)
                 if sel.selected:
                     self.config["disk"] = sel.selected[0]
+            elif self.step == 2:
+                sel = self.query_one("#disk_mode", SelectionList)
+                if sel.selected:
+                    self.config["disk_mode"] = sel.selected[0]
+                if self.config.get("disk_mode") == "existing":
+                    try:
+                        root_sel = self.query_one("#existing_root", SelectionList)
+                        if root_sel.selected:
+                            self.config["existing_root"] = root_sel.selected[0]
+                    except Exception:
+                        pass
             elif self.step == 3:
                 sel = self.query_one("#fs", SelectionList)
                 if sel.selected:

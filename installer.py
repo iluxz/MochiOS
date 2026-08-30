@@ -262,6 +262,24 @@ def detect_disk_partitions_summary(disk):
     return "\n".join(lines)
 
 
+def detect_existing_parts(disk):
+    """detect EFI, swap, and data partitions on a disk for existing mode.
+    returns dict with 'efi', 'swap', 'data' keys (partition paths or None)."""
+    parts = detect_partitions(disk)
+    result = {"efi": None, "swap": None, "data": None}
+    for p in parts:
+        fstype = p.get("fstype", "")
+        label = p.get("label", "").upper()
+        name = p["name"]
+        if fstype == "vfat" and (label == "EFI" or "efi" in name.lower()):
+            result["efi"] = name
+        elif fstype == "swap" or label == "SWAP":
+            result["swap"] = name
+        elif fstype in ("ext4", "btrfs", "xfs") and result["data"] is None:
+            result["data"] = name
+    return result
+
+
 def select_disk(disk):
     if not disk or not disk.startswith("/dev/"):
         raise ValueError(f"invalid disk: {disk}")
@@ -441,25 +459,22 @@ def configure_system(target, config, lfn, efi_uuid, swap_uuid, root_uuid):
     ch(["mkinitcpio", "-P"], to=300)
 
     lfn("writing fstab...")
+    fstab_lines = []
+    if efi_uuid:
+        fstab_lines.append(f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2")
+    if swap_uuid:
+        fstab_lines.append(f"UUID={swap_uuid} swap swap defaults 0 0")
     if filesystem == "btrfs":
-        fstab = (
-            f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2\n"
-            f"UUID={swap_uuid} swap swap defaults 0 0\n"
-            f"UUID={root_uuid} /mnt/btrfs btrfs rw,noatime,compress=zstd,subvolid=5 0 0\n"
-            f"UUID={root_uuid} / btrfs rw,noatime,compress=zstd,subvol=root_a 0 0\n"
-            f"UUID={root_uuid} /home btrfs rw,noatime,compress=zstd,subvol=home 0 0\n"
-            f"UUID={root_uuid} /var btrfs rw,noatime,compress=zstd,subvol=var 0 0\n"
-            f"UUID={root_uuid} /var/cache btrfs rw,noatime,compress=zstd,subvol=cache 0 0\n"
-        )
+        fstab_lines.append(f"UUID={root_uuid} /mnt/btrfs btrfs rw,noatime,compress=zstd,subvolid=5 0 0")
+        fstab_lines.append(f"UUID={root_uuid} / btrfs rw,noatime,compress=zstd,subvol=root_a 0 0")
+        fstab_lines.append(f"UUID={root_uuid} /home btrfs rw,noatime,compress=zstd,subvol=home 0 0")
+        fstab_lines.append(f"UUID={root_uuid} /var btrfs rw,noatime,compress=zstd,subvol=var 0 0")
+        fstab_lines.append(f"UUID={root_uuid} /var/cache btrfs rw,noatime,compress=zstd,subvol=cache 0 0")
         os.makedirs(f"{target}/mnt/btrfs", exist_ok=True)
     else:
-        fstab = (
-            f"UUID={efi_uuid} /boot vfat rw,noatime,fmask=0022,dmask=0022 0 2\n"
-            f"UUID={swap_uuid} swap swap defaults 0 0\n"
-            f"UUID={root_uuid} / ext4 rw,noatime 0 1\n"
-            f"UUID={root_uuid} /home ext4 rw,noatime 0 2\n"
-        )
-    (t / "etc/fstab").write_text(fstab)
+        fstab_lines.append(f"UUID={root_uuid} / ext4 rw,noatime 0 1")
+        fstab_lines.append(f"UUID={root_uuid} /home ext4 rw,noatime 0 2")
+    (t / "etc/fstab").write_text("\n".join(fstab_lines) + "\n")
     ch(["systemctl", "daemon-reload"])
 
     if filesystem == "btrfs":
@@ -735,40 +750,94 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         _unmount_all()
 
         disk = select_disk(config.get("disk"))
-        bios_part, efi_part, swap_part, root_part_p = partition_disk(disk, log_fn)
-        mounts_cleanup_needed = True
+        disk_mode = config.get("disk_mode", "wipe")
 
-        if abort_flag and abort_flag():
-            raise RuntimeError("installation aborted")
-        format_efi(efi_part, log_fn)
-        format_swap(swap_part, log_fn)
+        if disk_mode == "existing":
+            existing = detect_existing_parts(disk)
+            efi_part = existing["efi"]
+            swap_part = existing["swap"]
+            root_part_p = config.get("existing_root") or existing["data"]
 
-        filesystem = config.get("filesystem", "btrfs")
-        if filesystem == "ext4":
-            format_ext4(root_part_p, log_fn)
+            if not root_part_p:
+                raise RuntimeError("no suitable root partition found on disk")
+
+            log_fn(f"using existing partitions on {disk}:")
+            log_fn(f"  root: {root_part_p}")
+            if efi_part:
+                log_fn(f"  efi:  {efi_part}")
+            else:
+                log_fn("  [yellow]no EFI partition found — you may need to set up boot manually[/]")
+            if swap_part:
+                log_fn(f"  swap: {swap_part}")
+            else:
+                log_fn("  [yellow]no swap partition found — no swap will be active[/]")
+
+            mounts_cleanup_needed = True
+
+            if abort_flag and abort_flag():
+                raise RuntimeError("installation aborted")
+
+            filesystem = config.get("filesystem", "btrfs")
+            if filesystem == "ext4":
+                format_ext4(root_part_p, log_fn)
+            else:
+                format_btrfs(root_part_p, log_fn)
+
+            _CLEANUP_TARGET[0] = target
+            if filesystem == "ext4":
+                setup_ext4(root_part_p, target, log_fn)
+            else:
+                setup_btrfs(root_part_p, target, log_fn)
+
+            root_uuid = get_uuid(root_part_p)
+            efi_uuid = get_uuid(efi_part) if efi_part else ""
+            swap_uuid = get_uuid(swap_part) if swap_part else ""
+
+            if filesystem == "btrfs":
+                log_fn("configuring snapper for root...")
+                run(["arch-chroot", target, "snapper", "-c", "root", "create-config", "/"], check=False, timeout=30)
+                run(["arch-chroot", target, "systemctl", "enable", "snapper-timeline.timer"], check=False)
+                run(["arch-chroot", target, "systemctl", "enable", "snapper-cleanup.timer"], check=False)
+
+            if swap_part:
+                run(["swapon", swap_part], check=False)
+            if efi_part:
+                run(["mount", efi_part, f"{target}/boot"])
         else:
-            format_btrfs(root_part_p, log_fn)
+            bios_part, efi_part, swap_part, root_part_p = partition_disk(disk, log_fn)
+            mounts_cleanup_needed = True
 
-        if abort_flag and abort_flag():
-            raise RuntimeError("installation aborted")
-        _CLEANUP_TARGET[0] = target
-        if filesystem == "ext4":
-            setup_ext4(root_part_p, target, log_fn)
-        else:
-            setup_btrfs(root_part_p, target, log_fn)
+            if abort_flag and abort_flag():
+                raise RuntimeError("installation aborted")
+            format_efi(efi_part, log_fn)
+            format_swap(swap_part, log_fn)
 
-        efi_uuid = get_uuid(efi_part)
-        swap_uuid = get_uuid(swap_part)
-        root_uuid = get_uuid(root_part_p)
+            filesystem = config.get("filesystem", "btrfs")
+            if filesystem == "ext4":
+                format_ext4(root_part_p, log_fn)
+            else:
+                format_btrfs(root_part_p, log_fn)
 
-        if filesystem == "btrfs":
-            log_fn("configuring snapper for root...")
-            run(["arch-chroot", target, "snapper", "-c", "root", "create-config", "/"], check=False, timeout=30)
-            run(["arch-chroot", target, "systemctl", "enable", "snapper-timeline.timer"], check=False)
-            run(["arch-chroot", target, "systemctl", "enable", "snapper-cleanup.timer"], check=False)
+            if abort_flag and abort_flag():
+                raise RuntimeError("installation aborted")
+            _CLEANUP_TARGET[0] = target
+            if filesystem == "ext4":
+                setup_ext4(root_part_p, target, log_fn)
+            else:
+                setup_btrfs(root_part_p, target, log_fn)
 
-        run(["swapon", swap_part], check=False)
-        run(["mount", efi_part, f"{target}/boot"])
+            efi_uuid = get_uuid(efi_part)
+            swap_uuid = get_uuid(swap_part)
+            root_uuid = get_uuid(root_part_p)
+
+            if filesystem == "btrfs":
+                log_fn("configuring snapper for root...")
+                run(["arch-chroot", target, "snapper", "-c", "root", "create-config", "/"], check=False, timeout=30)
+                run(["arch-chroot", target, "systemctl", "enable", "snapper-timeline.timer"], check=False)
+                run(["arch-chroot", target, "systemctl", "enable", "snapper-cleanup.timer"], check=False)
+
+            run(["swapon", swap_part], check=False)
+            run(["mount", efi_part, f"{target}/boot"])
 
         extra_all = config.get("extra_pkgs", []) or []
         repo_extra = [p for p in extra_all if isinstance(p, str) and p not in CUSTOM_EXTRAS]
