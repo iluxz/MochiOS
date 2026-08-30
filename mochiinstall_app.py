@@ -13,10 +13,10 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mochi_ascii import MOCHI_ASCII
-from installer import do_install, set_progress_cb
+from installer import do_install, set_progress_cb, detect_partitions, detect_disk_partitions_summary
 
 
-STEP_NAMES = ["Hostname", "Disk", "Filesystem", "Kernel", "Extras", "Desktop & Boot", "User", "Review"]
+STEP_NAMES = ["Hostname", "Disk", "Partitions", "Filesystem", "Kernel", "Extras", "Desktop & Boot", "User", "Review"]
 
 
 class LogUpdate(Message):
@@ -111,12 +111,12 @@ class GuidedScreen(Screen):
         self.render_step()
 
     def render_step(self) -> None:
-        if not (0 <= self.step < 8):
+        if not (0 <= self.step < 9):
             self.app.pop_screen()
             return
         self.step_bar.update(self.step_bar.render_step(self.step))
         self.body.remove_children()
-        step_fn = [self.step_hostname, self.step_disk, self.step_fs, self.step_kernel, self.step_extra, self.step_de_boot, self.step_user, self.step_summary][self.step]
+        step_fn = [self.step_hostname, self.step_disk, self.step_partition, self.step_fs, self.step_kernel, self.step_extra, self.step_de_boot, self.step_user, self.step_summary][self.step]
         step_fn()
         self._focus_step()
 
@@ -129,15 +129,17 @@ class GuidedScreen(Screen):
         elif self.step == 1:
             self._try_focus_sel("#disk_list")
         elif self.step == 2:
-            self._try_focus_sel("#fs")
+            self._try_focus_sel("#disk_mode")
         elif self.step == 3:
-            self._try_focus_sel("#kernel")
+            self._try_focus_sel("#fs")
         elif self.step == 4:
-            self._try_focus_sel("#extra_pkgs")
+            self._try_focus_sel("#kernel")
         elif self.step == 5:
+            self._try_focus_sel("#extra_pkgs")
+        elif self.step == 6:
             self._try_focus_sel("#de")
             self._try_focus_sel("#bootloader")
-        elif self.step == 6:
+        elif self.step == 7:
             self._try_focus("#username", Input)
 
     def _try_focus(self, selector, widget_type):
@@ -159,7 +161,7 @@ class GuidedScreen(Screen):
             hint = self.query_one("#disk_hint", Label) if self.body.query("#disk_hint") else None
             if hint: hint.update("[red]select a disk first![/]")
             return False
-        if self.step == 6:
+        if self.step == 7:
             pw = self.config.get("password", "")
             pw_c = self.config.get("password_confirm", "")
             hint = self.query_one("#pw_hint", Label) if self.body.query("#pw_hint") else None
@@ -170,7 +172,7 @@ class GuidedScreen(Screen):
                 if hint: hint.update("[red]passwords do not match[/]")
                 return False
         self.collect_current()
-        if self.step == 7:
+        if self.step == 8:
             if not self.config.get("disk"):
                 self.step = 1
                 self.render_step()
@@ -293,6 +295,19 @@ class GuidedScreen(Screen):
             self._nav(can_next=has_disk, next_label="next")
         self.body.mount(self._wrap(*kids))
 
+    def step_partition(self) -> None:
+        """show partition info for selected disk."""
+        disk = self.config.get("disk", "")
+        kids = [Static(f"[bold]partitions on {disk}[/]")]
+
+        part_summary = detect_disk_partitions_summary(disk)
+        kids.append(Static(f"[dim]{part_summary}[/]"))
+        kids.append(Static(""))
+        kids.append(Static("[dim]full 'use existing partition' mode coming soon — currently wipes the whole disk[/]"))
+
+        self._nav()
+        self.body.mount(self._wrap(*kids))
+
     def step_fs(self) -> None:
         fs = self.config.get("filesystem", "btrfs")
         self.body.mount(self._wrap(
@@ -383,7 +398,7 @@ class GuidedScreen(Screen):
             Static("[bold underline]review configuration[/]"),
             Static(""),
             Static(f"  hostname:    [white]{c['hostname']}[/]"),
-            Static(f"  disk:        [red]{c['disk'] or 'NOT SELECTED'}[/] {'[red bold](required!)' if not disk_set else '(will be wiped)'}"),
+            Static(f"  disk:        [red]{c['disk'] or 'NOT SELECTED'}[/] {'[red bold](required!)' if not disk_set else '[dim](will be wiped)[/]'}"),
             Static(f"  filesystem:  [white]{c.get('filesystem', 'btrfs')}[/]"),
             Static(f"  desktop:     [white]{c['de']}[/]"),
             Static(f"  greeter:     [white]{c.get('greeter', 'sddm')}[/]"),
@@ -405,17 +420,17 @@ class GuidedScreen(Screen):
                 sel = self.query_one("#disk_list", SelectionList)
                 if sel.selected:
                     self.config["disk"] = sel.selected[0]
-            elif self.step == 2:
+            elif self.step == 3:
                 sel = self.query_one("#fs", SelectionList)
                 if sel.selected:
                     self.config["filesystem"] = sel.selected[0]
-            elif self.step == 3:
+            elif self.step == 4:
                 sel = self.query_one("#kernel", SelectionList)
                 self.config["kernels"] = sel.selected if sel.selected else ["linux"]
-            elif self.step == 4:
+            elif self.step == 5:
                 sel = self.query_one("#extra_pkgs", SelectionList)
                 self.config["extra_pkgs"] = sel.selected if sel.selected else []
-            elif self.step == 5:
+            elif self.step == 6:
                 sel_de = self.query_one("#de", SelectionList)
                 sel_bl = self.query_one("#bootloader", SelectionList)
                 sel_gr = self.query_one("#greeter", SelectionList)
@@ -425,7 +440,7 @@ class GuidedScreen(Screen):
                     self.config["bootloader"] = sel_bl.selected[0]
                 if sel_gr.selected:
                     self.config["greeter"] = sel_gr.selected[0]
-            elif self.step == 6:
+            elif self.step == 7:
                 u = self.query_one("#username", Input)
                 p = self.query_one("#password", Input)
                 pc = self.query_one("#password_confirm", Input)

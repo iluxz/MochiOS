@@ -223,6 +223,45 @@ def retry_cmd(cmd, lfn, max_retries=5, delay=2, **kwargs):
                 raise
 
 
+def detect_partitions(disk):
+    """detect existing partitions on a disk. returns list of dicts with name, size, type, mountpoint, fstype."""
+    partitions = []
+    try:
+        r = subprocess.run(
+            ["lsblk", "-Jno", "NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,LABEL", disk],
+            capture_output=True, text=True, timeout=5
+        )
+        import json
+        data = json.loads(r.stdout)
+        for dev in data.get("blockdevices", []):
+            for child in dev.get("children", []):
+                partitions.append({
+                    "name": f"/dev/{child['name']}",
+                    "size": child.get("size", "?"),
+                    "type": child.get("type", "?"),
+                    "fstype": child.get("fstype", ""),
+                    "mountpoint": child.get("mountpoint", ""),
+                    "label": child.get("label", ""),
+                })
+    except Exception:
+        pass
+    return partitions
+
+
+def detect_disk_partitions_summary(disk):
+    """return a human-readable summary of partitions on a disk."""
+    parts = detect_partitions(disk)
+    if not parts:
+        return "no partitions found (empty or unformatted disk)"
+    lines = []
+    for p in parts:
+        label = f" [{p['label']}]" if p["label"] else ""
+        mount = f" mounted at {p['mountpoint']}" if p["mountpoint"] else ""
+        fstype = f" ({p['fstype']})" if p["fstype"] else ""
+        lines.append(f"  {p['name']}  {p['size']}{fstype}{label}{mount}")
+    return "\n".join(lines)
+
+
 def select_disk(disk):
     if not disk or not disk.startswith("/dev/"):
         raise ValueError(f"invalid disk: {disk}")
