@@ -4,7 +4,7 @@
   <small><i>made by my friend, men</i></small>
   <br><br>
   <h1>MochiOS</h1>
-  <p><strong>arch-based linux distro with atomic updates, btrfs snapshots, and a soft squishy purple vibe</strong></p>
+  <p><strong>arch-based linux distro with atomic updates, btrfs snapshots, and a.. well idk what to put here lmao</strong></p>
   <p>
     <a href="https://github.com/iluxz/MochiOS"><img src="https://img.shields.io/github/actions/workflow/status/iluxz/MochiOS/build.yml?branch=main&label=build&logo=github" alt="Build"></a>
     <a href="https://github.com/iluxz/MochiOS/releases"><img src="https://img.shields.io/github/v/release/iluxz/MochiOS?logo=github" alt="Release"></a>
@@ -16,8 +16,7 @@
 
 ## about
 
-mochios is a linux distribution built on arch linux that actually works out of the box. no 3-hour install guides, no fighting with config files at 2am. pick a desktop, install, and boom — you're in.
-
+mochios is a linux distribution built on arch linux that actually works out of the box
 uses **mochiboot** (a limine fork), **abroot** (a/b atomic updates on btrfs), and a custom **mochi** cli that wraps pacman so you don't have to remember flags.
 
 ## features
