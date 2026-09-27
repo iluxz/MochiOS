@@ -79,7 +79,31 @@ def set_fallback_mirrors(lfn):
         lfn(f"[yellow]could not write mirrorlist: {e}[/]")
 
 
+_PACMAN_LOCK = "/var/lib/pacman/db.lck"
+
+def _pacman_lock_check(lfn):
+    """fail fast with a clear message instead of dying cryptically in pacstrap."""
+    import shutil
+    if not os.path.exists(_PACMAN_LOCK):
+        return
+    holder = None
+    if shutil.which("fuser"):
+        try:
+            r = subprocess.run(["fuser", _PACMAN_LOCK], capture_output=True, text=True, timeout=10)
+            holder = (r.stdout or r.stderr or "").strip()
+        except Exception:
+            holder = None
+    if holder:
+        raise RuntimeError(f"pacman database is locked (held by: {holder}) — another pacman/installer is running")
+    # lock file with no live holder: stale, remove and proceed
+    lfn("[yellow]stale pacman lock found, removing it...[/]")
+    try:
+        os.remove(_PACMAN_LOCK)
+    except OSError as e:
+        raise RuntimeError(f"cannot clear stale pacman lock: {e}")
+
 def pacstrap_with_fallback(target, pkgs, abort_flag, lfn, timeout=900):
+    _pacman_lock_check(lfn)
     try:
         abortable_run(["pacstrap", "-K", target] + pkgs, abort_flag, timeout=timeout, log_fn=lfn)
         return True
@@ -714,7 +738,45 @@ def cleanup_mounts(target):
 
 _INSTALL_LOCK = "/tmp/mochiinstall.lock"
 
+def _lock_owner():
+    """pid recorded in the lock file, or None if unreadable."""
+    try:
+        with open(_INSTALL_LOCK) as f:
+            return int(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+def _pid_alive(pid):
+    """true if a process with this pid exists (no signal sent)."""
+    if not pid or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # exists, just not ours
+    except OSError:
+        return False
+
 def _acquire_lock():
+    try:
+        fd = os.open(_INSTALL_LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        pass
+    # lock exists — steal it only if the owner is dead (crash/kill -9
+    # skips the finally that releases it; tmpfs keeps it until reboot)
+    owner = _lock_owner()
+    if owner is not None and _pid_alive(owner):
+        return False
+    try:
+        os.remove(_INSTALL_LOCK)
+    except OSError:
+        return False
     try:
         fd = os.open(_INSTALL_LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
         os.write(fd, str(os.getpid()).encode())
@@ -737,6 +799,9 @@ def do_install(target="/mnt/mochios", config=None, log_fn=None, abort_flag=None)
         config = {}
 
     if not _acquire_lock():
+        owner = _lock_owner()
+        if owner:
+            raise RuntimeError(f"another installer instance is already running (pid {owner}) — check your taskbar, the live ISO auto-opens it at login")
         raise RuntimeError("another installer instance is already running")
 
     mounts_cleanup_needed = False
